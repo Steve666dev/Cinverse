@@ -90,11 +90,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
           <span className="poster-rating-badge">★ {movie.r || '7.5'}</span>
         </div>
 
-        {/* Play Icon on Hover */}
-        <div className="poster-play-cue">
-          <span className="play-triangle">▶</span>
-        </div>
-
         {/* Bottom Details Block */}
         <div className="poster-info-block">
           <div className="poster-title" title={movie.t}>{movie.t}</div>
