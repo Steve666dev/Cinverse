@@ -12,10 +12,13 @@ const decryptKey = (encrypted: string) => {
   }
 };
 
-const OMDB_KEY = decryptKey(import.meta.env.VITE_OMDB_API_KEY_ENC || '');
+const DEFAULT_OMDB_ENC = 'U2FsdGVkX1/voglqp1uFiQ8Ia8RowkkeUHU1PtgRSEU=';
+const DEFAULT_TMDB_ENC = 'U2FsdGVkX19+oMnz/X58Q6NkmQ8aE80POnCogtGik9UqD1jKIlYdnL88aZ0srtWRQOy/JNLTfYKC6MmWnyYH7Q==';
+
+const OMDB_KEY = decryptKey(import.meta.env.VITE_OMDB_API_KEY_ENC || DEFAULT_OMDB_ENC);
 const OMDB_URL = 'https://www.omdbapi.com/';
 
-const TMDB_KEY = decryptKey(import.meta.env.VITE_TMDB_API_KEY_ENC || '');
+const TMDB_KEY = decryptKey(import.meta.env.VITE_TMDB_API_KEY_ENC || DEFAULT_TMDB_ENC);
 const TMDB_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMG = 'https://image.tmdb.org/t/p/w780'; // Upgraded from w500 to w780 HD
 const TMDB_ENABLED = Boolean(TMDB_KEY && TMDB_KEY.length > 10);
