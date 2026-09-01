@@ -192,19 +192,15 @@ mark { background: var(--blue); color: #fff; padding: 0 4px; border-radius: 3px;
 /* Grid results (Search Results, Explore, Watchlist, Discover) */
 .grid-results {
   margin-top: 40px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 30px;
   padding: 0;
-}
-.grid-results .poster-card {
-  width: 100%;
-  flex: none;
 }
 
 @media (max-width: 600px) {
   .grid-results {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 20px;
   }
 }
