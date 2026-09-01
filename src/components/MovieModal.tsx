@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Movie, Review, CastMember } from '../types';
+import { useWatchlist } from '../context/WatchlistContext';
 import { ScrollProgress } from '@/components/core/scroll-progress';
 import { GlowEffect } from '@/components/core/glow-effect';
 import './MovieModal.css';
@@ -52,6 +53,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
   const [activeTab, setActiveTab] = useState<'overview' | 'watch' | 'trailer' | 'reviews'>('overview');
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [showAgeGate, setShowAgeGate] = useState(false);
+  const { watchlist, toggleWatch } = useWatchlist();
   const contentRef = useRef<HTMLDivElement>(null);
   
   const handleOpenTrailer = (e?: React.MouseEvent | React.KeyboardEvent) => {
@@ -94,6 +96,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
 
   if (!movie) return null;
 
+  const isSaved = watchlist.has(movie.id);
   const videoId = getYouTubeVideoId(movie);
   const directYouTubeUrl = getDirectYouTubeUrl(movie);
 
@@ -129,13 +132,23 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
           </div>
 
           <div id="modalBody">
-            <button 
-              id="modalClose"
-              onClick={onClose}
-              aria-label="Close dialog"
-            >
-              ✕
-            </button>
+            <div className="modal-top-actions">
+              <button
+                className={`modal-top-watchlist-btn ${isSaved ? 'saved' : ''}`}
+                onClick={() => toggleWatch(movie.id)}
+                aria-label="Add to watchlist"
+                title={isSaved ? "Remove from watchlist" : "Add to watchlist"}
+              >
+                {isSaved ? '✓' : '+'}
+              </button>
+              <button 
+                id="modalClose"
+                onClick={onClose}
+                aria-label="Close dialog"
+              >
+                ✕
+              </button>
+            </div>
 
             <div id="modalTagline">{movie.tagline}</div>
             <h2 id="modalTitle">{movie.t}</h2>
