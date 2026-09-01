@@ -204,76 +204,40 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                   <p id="modalBlurb">{movie.blurb}</p>
                   
                   {/* Direct Streaming Providers */}
-                  <div className="watch-pane-hero" style={{ marginTop: '30px' }}>
-                    <div className="watch-verified-banner">
-                      <span className="shield-icon">🛡️</span>
-                      <div>
-                        <h4>Official & Verified Streaming Providers</h4>
-                        <p>Direct links to verified platforms & apps with guaranteed high-definition playback.</p>
+                  <div className="modal-watch-quick-bar" style={{ marginTop: '30px' }}>
+                    <div className="watch-quick-header">
+                      <div className="watch-quick-title">
+                        <span className="verified-shield">✓</span>
+                        <span>Stream on Verified Apps</span>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="watch-providers-grid">
-                    {(movie.watchProviders && movie.watchProviders.length > 0 ? movie.watchProviders : [
-                      { name: 'Netflix', type: 'stream', badge: 'Stream on Netflix', quality: '4K Ultra HD', url: `https://www.netflix.com/search?q=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-                      { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream with Prime', quality: '4K Ultra HD', url: `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-                      { name: 'Disney+ Hotstar', type: 'stream', badge: 'Stream on Hotstar', quality: '4K Dolby Vision', url: `https://www.hotstar.com/in/explore?search_query=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
-                      { name: 'Apple TV', type: 'rent', badge: 'Watch on Apple TV', quality: '4K HDR', url: `https://tv.apple.com/search?term=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/peURlLlr8jggOwK53fJ5wdQl05y.jpg' },
-                      { name: 'YouTube Movies', type: 'rent', badge: 'Watch / Rent Full Movie', quality: 'Full HD', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(movie.t + ' full movie')}`, logo: 'https://image.tmdb.org/t/p/w92/oRQuR7451m1z2FzE9oq1B3Xw9aJ.jpg' },
-                      { name: 'JioCinema', type: 'free', badge: 'Stream on JioCinema', quality: 'HD Stream', url: `https://www.jiocinema.com/search/${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg' }
-                    ]).map((provider, idx) => (
-                      <div key={idx} className={`watch-provider-card ${provider.type}`}>
-                        <div className="provider-card-main">
-                          <div className="provider-logo-wrap">
-                            {provider.logo ? (
-                              <img src={provider.logo} alt={provider.name} className="provider-logo-img" />
-                            ) : (
-                              <div className="provider-logo-placeholder">{provider.name.charAt(0)}</div>
-                            )}
-                          </div>
-                          <div className="provider-details">
-                            <div className="provider-title-row">
-                              <span className="provider-name">{provider.name}</span>
-                              <span className="provider-verified-badge" title="Official Verified App / Platform">✓ Verified</span>
-                            </div>
-                            <div className="provider-meta-row">
-                              <span className={`provider-badge ${provider.type}`}>
-                                {provider.badge || (provider.type === 'stream' ? 'Stream Now' : provider.type === 'rent' ? 'Rent / Buy' : 'Free Stream')}
-                              </span>
-                              {provider.quality && <span className="provider-quality">{provider.quality}</span>}
-                            </div>
-                          </div>
-                        </div>
-
+                    <div className="watch-quick-providers">
+                      {(movie.watchProviders && movie.watchProviders.length > 0 ? movie.watchProviders : [
+                        { name: 'Netflix', type: 'stream', url: `https://www.netflix.com/search?q=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
+                        { name: 'Amazon Prime Video', type: 'stream', url: `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
+                        { name: 'Disney+ Hotstar', type: 'stream', url: `https://www.hotstar.com/in/explore?search_query=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
+                        { name: 'Apple TV', type: 'rent', url: `https://tv.apple.com/search?term=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/peURlLlr8jggOwK53fJ5wdQl05y.jpg' }
+                      ]).map((provider, i) => (
                         <a
+                          key={i}
                           href={provider.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="provider-cta-btn"
+                          className="quick-provider-pill"
+                          title={`Watch ${movie.t} on ${provider.name}`}
                           onClick={e => e.stopPropagation()}
                         >
-                          <span>Direct Stream on {provider.name}</span>
-                          <span className="cta-arrow">↗</span>
+                          {provider.logo ? (
+                            <img src={provider.logo} alt={provider.name} className="quick-provider-logo" />
+                          ) : (
+                            <span className="quick-provider-icon">▶</span>
+                          )}
+                          <span className="quick-provider-name">{provider.name}</span>
+                          <span className="quick-provider-arrow">↗</span>
                         </a>
-                      </div>
-                    ))}
-                  </div>
-
-                  {movie.watchUrl && (
-                    <div className="watch-justwatch-bar">
-                      <span>Data powered by TMDb & Verified Stream Search</span>
-                      <a
-                        href={movie.watchUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="justwatch-link"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        Explore Complete Streaming Availability ↗
-                      </a>
+                      ))}
                     </div>
-                  )}
+                  </div>
 
                   {((movie.castMembers && movie.castMembers.length > 0) || movie.cast) && (
                     <div className="modal-cast-section">
