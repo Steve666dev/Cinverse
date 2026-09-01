@@ -315,29 +315,6 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                       </div>
                     </div>
                   )}
-                  
-                  <div className="overview-actions">
-                    <button
-                      className="modal-stream-btn"
-                      onClick={() => setActiveTab('watch')}
-                    >
-                      <span>📺</span>
-                      <span>Where to Watch</span>
-                    </button>
-                    <button
-                      className="modal-trailer-btn"
-                      onClick={handleOpenTrailer}
-                    >
-                      <span>▶</span>
-                      <span>Watch Trailer</span>
-                    </button>
-                    <button
-                      className={`modal-watchlist-btn ${isSaved ? 'saved' : ''}`}
-                      onClick={() => toggleWatch(movie.id)}
-                    >
-                      {isSaved ? '✓ In your watchlist' : '+ Add to watchlist'}
-                    </button>
-                  </div>
                 </div>
               )}
 
