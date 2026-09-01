@@ -1,0 +1,54 @@
+/* ── Spotlight Cursor Effect ── */
+.spotlight-container {
+  pointer-events: none;
+  overflow: hidden;
+  user-select: none;
+}
+
+.spotlight-global {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  pointer-events: none;
+}
+
+.spotlight-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* Fire gradient (Yellow + Orange + Red) */
+.spotlight-fire {
+  background: radial-gradient(
+    circle,
+    rgba(255, 235, 59, 0.42) 0%,
+    rgba(255, 152, 0, 0.32) 24%,
+    rgba(244, 67, 54, 0.22) 48%,
+    rgba(183, 28, 28, 0.08) 68%,
+    transparent 80%
+  );
+  filter: blur(28px);
+  mix-blend-mode: screen;
+  animation: fireShimmer 4s ease-in-out infinite alternate;
+}
+
+@keyframes fireShimmer {
+  0% {
+    filter: blur(26px) brightness(1);
+    opacity: 0.85;
+  }
+  50% {
+    filter: blur(32px) brightness(1.15);
+    opacity: 0.95;
+  }
+  100% {
+    filter: blur(28px) brightness(1.05);
+    opacity: 0.9;
+  }
+}

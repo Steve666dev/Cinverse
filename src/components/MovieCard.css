@@ -1,0 +1,215 @@
+/* ── Poster Card ── */
+.poster-card {
+  flex: 0 0 auto;
+  width: 260px; /* 230px visual + 15px padding on each side */
+  padding: 30px 15px; /* 30px top/bottom, 15px left/right for shadows */
+  perspective: 900px;
+  /* Local color overrides — cards stay vivid regardless of site theme */
+  --card-accent: #22d3ee;
+  --card-glow: rgba(6,182,212,0.35);
+  --card-border: rgba(34,211,238,0.2);
+}
+
+.poster-inner {
+  position: relative;
+  aspect-ratio: 2/3;
+  border-radius: calc(var(--radius) + 2px);
+  transform-style: preserve-3d;
+  transition: transform .15s ease-out, box-shadow .3s ease;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,.8),
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    0 0 0 1px rgba(0,0,0,0.5);
+  border: 1px solid var(--card-border);
+  background: rgba(6,18,28,0.4);
+  backdrop-filter: blur(8px);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+}
+.poster-inner:hover {
+  box-shadow:
+    0 24px 50px rgba(0,0,0,.8),
+    inset 0 1px 0 rgba(34,211,238,0.4),
+    0 0 0 1px #22d3ee,
+    0 0 30px var(--card-glow);
+  border-color: #22d3ee;
+}
+.poster-inner:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 2px; }
+
+/* Click / ripple */
+.poster-inner.clicked {
+  box-shadow: 0 0 40px rgba(37,99,235,0.5), 0 0 0 2px var(--blue-bright);
+}
+.click-ripple {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle, rgba(96,165,250,0.55) 0%, transparent 70%);
+  animation: ripple 0.5s ease-out forwards;
+  z-index: 10;
+  pointer-events: none;
+}
+@keyframes ripple {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Art area */
+.poster-art {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  border-radius: calc(var(--radius) - 2px);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: filter 0.3s ease;
+}
+.poster-inner:hover .poster-art {
+  filter: contrast(1.05) saturate(1.08) brightness(1.02);
+}
+.poster-art .grain {
+  position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size: 3px 3px;
+  mix-blend-mode: overlay;
+  z-index: 1;
+  pointer-events: none;
+}
+.poster-art .vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, transparent 60%, rgba(0,0,0,.4) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+.poster-art .image-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(0deg, rgba(4,6,15,0.92) 0%, rgba(4,6,15,0.2) 35%, transparent 65%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Dynamic Glare Effect */
+.poster-inner::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(
+    circle 220px at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(255,255,255,0.25) 0%,
+    transparent 70%
+  );
+  opacity: var(--glare-opacity, 0);
+  transition: opacity 0.3s ease;
+  z-index: 5;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+/* Tags & text */
+.poster-tagline {
+  position: absolute; top: 12px; left: 12px; right: 40px;
+  font-family: var(--font-mono);
+  font-size: .6rem; letter-spacing: .08em;
+  color: var(--blue-neon); opacity: .85;
+  z-index: 2;
+  text-shadow: 0 0 8px rgba(0,212,255,0.5);
+}
+.poster-rating {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  font-family: var(--font-mono); font-size: .65rem;
+  background: rgba(4,6,15,.8);
+  border: 1px solid var(--blue);
+  color: var(--blue-bright);
+  padding: 3px 7px; border-radius: 4px;
+  box-shadow: 0 0 8px rgba(37,99,235,0.3);
+}
+.poster-title-block {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  z-index: 2; padding: 16px;
+  background: linear-gradient(180deg, transparent, rgba(4,6,15,.97) 65%);
+  border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px);
+}
+.p-title {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  color: var(--cream);
+  line-height: 0.95;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  letter-spacing: 0.04em;
+}
+.p-genre {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--muted);
+  margin-top: 6px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Heart / watchlist */
+.heart-btn {
+  position: absolute; bottom: 14px; right: 10px; z-index: 4;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(4,6,15,.75);
+  color: var(--cream);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85rem; cursor: pointer;
+  transition: all .2s ease;
+}
+.heart-btn:hover {
+  border-color: var(--blue-bright);
+  transform: scale(1.15);
+  box-shadow: var(--glow-sm);
+}
+.heart-btn.saved {
+  background: var(--blue);
+  border-color: var(--blue-bright);
+  color: #fff;
+  box-shadow: var(--glow-sm);
+}
+
+/* ── Motif Fallbacks (no poster) — Blue-themed ── */
+.motif-scifi { background: radial-gradient(circle at 70% 25%, rgba(0,212,255,.3), transparent 45%), radial-gradient(circle at 70% 25%, transparent 60px, rgba(0,212,255,.1) 62px, transparent 64px), linear-gradient(160deg, #050f2a, #04060f 75%); }
+.motif-action { background: repeating-linear-gradient(115deg, rgba(37,99,235,.15) 0 3px, transparent 3px 26px), linear-gradient(160deg, #070e28, #04060f 75%); }
+.motif-drama { background: linear-gradient(180deg, rgba(96,165,250,.14), transparent 55%), linear-gradient(160deg, #070d22, #04060f 80%); }
+.motif-comedy { background: radial-gradient(circle, rgba(0,212,255,.12) 2px, transparent 2.5px) 0 0/24px 24px, linear-gradient(160deg, #060e20, #04060f 75%); }
+.motif-mystery { background: radial-gradient(circle at 50% 20%, rgba(37,99,235,.25), transparent 55%), linear-gradient(160deg, #06091a, #04060f 85%); }
+.motif-fantasy { background: radial-gradient(circle at 20% 20%, rgba(96,165,250,.4) 1.5px, transparent 2px) 0 0/40px 40px, radial-gradient(circle at 60% 60%, rgba(0,212,255,.35) 1.5px, transparent 2px) 0 0/60px 60px, linear-gradient(160deg, #050d28, #04060f 80%); }
+.motif-music { background: repeating-linear-gradient(90deg, rgba(37,99,235,.15) 0 4px, transparent 4px 14px), linear-gradient(160deg, #070c1e, #04060f 80%); }
+.motif-horror { background: radial-gradient(ellipse at 50% 100%, rgba(30,58,138,.4), transparent 60%), linear-gradient(160deg, #04060f, #060816 85%); }
+
+/* Card Play Hover Cue */
+.card-play-hover {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.8), 0 4px 15px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 6;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.card-play-hover span {
+  margin-left: 3px;
+}
+.poster-inner:hover .card-play-hover {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}

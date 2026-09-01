@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cineverse — Find your next great film</title>
+    <meta name="description" content="Cineverse reads the mood you're in and finds the perfect film for tonight." />
+
+    <!-- Preconnect for Google Fonts speed -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Preconnect for YouTube trailers — dramatically speeds up first play -->
+    <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+    <link rel="preconnect" href="https://i.ytimg.com" />
+    <link rel="dns-prefetch" href="https://www.youtube.com" />
+    <link rel="dns-prefetch" href="https://img.youtube.com" />
+
+    <!--
+      Font stack:
+      • Clash Display    — bold cinematic display headings  (h1, logo, big titles)
+      • Inter            — clean body / UI text            (paragraphs, labels, buttons)
+      • JetBrains Mono   — code / mono accents             (timestamps, tags, stats)
+    -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <!--
+      Clash Display via CDN (not on Google Fonts — load from Fontshare)
+      Falls back gracefully to "Bebas Neue" which IS on Google Fonts
+    -->
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
+
+    <style>
+      /* Clash Display from Fontshare — premium cinematic display font */
+      @font-face {
+        font-family: 'Clash Display';
+        src: url('https://api.fontshare.com/v2/css?f[]=clash-display@700,600,500&display=swap') format('woff2');
+        font-weight: 500 700;
+        font-display: swap;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

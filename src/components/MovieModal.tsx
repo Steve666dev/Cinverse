@@ -1,0 +1,455 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import type { Movie, Review, CastMember } from '../types';
+import { useWatchlist } from '../context/WatchlistContext';
+import { ScrollProgress } from '@/components/core/scroll-progress';
+import { GlowEffect } from '@/components/core/glow-effect';
+import './MovieModal.css';
+
+interface MovieModalProps {
+  movie: Movie | null;
+  onClose: () => void;
+  onSelectActor?: (actor: CastMember) => void;
+}
+
+const getYouTubeVideoId = (movie: Movie): string | null => {
+  if (movie.trailerUrl && movie.trailerUrl.trim()) {
+    const url = movie.trailerUrl.trim();
+    if (url.includes('/embed/')) {
+      const id = url.split('/embed/')[1]?.split('?')[0]?.split('&')[0];
+      if (id && id.length >= 5) return id;
+    }
+    if (url.includes('watch?v=')) {
+      const id = url.split('watch?v=')[1]?.split('&')[0];
+      if (id && id.length >= 5) return id;
+    }
+    if (url.includes('youtu.be/')) {
+      const id = url.split('youtu.be/')[1]?.split('?')[0];
+      if (id && id.length >= 5) return id;
+    }
+  }
+  return null;
+};
+
+const getTrailerEmbedUrl = (movie: Movie): string => {
+  const videoId = getYouTubeVideoId(movie);
+  if (videoId) {
+    return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1&enablejsapi=1`;
+  }
+  // Fallback search link
+  const query = encodeURIComponent(`${movie.t} ${movie.y || ''} official trailer`);
+  return `https://www.youtube-nocookie.com/embed?listType=search&list=${query}&autoplay=1&rel=0&playsinline=1`;
+};
+
+const getDirectYouTubeUrl = (movie: Movie): string => {
+  const videoId = getYouTubeVideoId(movie);
+  if (videoId) {
+    return `https://www.youtube.com/watch?v=${videoId}`;
+  }
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${movie.t} ${movie.y || ''} official trailer`)}`;
+};
+
+const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'trailer' | 'reviews'>('overview');
+  const [trailerOpen, setTrailerOpen] = useState(false);
+  const [showAgeGate, setShowAgeGate] = useState(false);
+  const { watchlist, toggleWatch } = useWatchlist();
+  const contentRef = useRef<HTMLDivElement>(null);
+  
+  const handleOpenTrailer = (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) e.stopPropagation();
+    if (movie?.isAdult) {
+      setShowAgeGate(true);
+    } else {
+      setTrailerOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    if (movie) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      setTrailerOpen(false);
+      setActiveTab('overview');
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [movie]);
+
+  // Handle ESC key to close trailer or modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (trailerOpen) {
+          setTrailerOpen(false);
+        } else if (movie) {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [trailerOpen, movie, onClose]);
+
+  if (!movie) return null;
+
+  const isSaved = watchlist.has(movie.id);
+  const videoId = getYouTubeVideoId(movie);
+  const directYouTubeUrl = getDirectYouTubeUrl(movie);
+
+  return createPortal(
+    <>
+      <div id="modalBackdrop" className="open" onClick={onClose}>
+        <div style={{ position: 'relative', display: 'flex', borderRadius: '16px' }}>
+          <GlowEffect
+            colors={['#0894FF', '#C959DD', '#FF2E54', '#FF9004']}
+            mode='flow'
+            blur='medium'
+          />
+          <div id="modalCard" data-lenis-prevent="true" onClick={e => e.stopPropagation()}>
+            <div
+            id="modalPoster"
+            className={`motif-${movie.motif}`}
+            style={movie.img ? { backgroundImage: `url('${movie.img}')`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+            onClick={handleOpenTrailer}
+            title="Click to play trailer"
+          >
+            <div className="vignette" />
+
+            <button
+              className="poster-play-center-btn"
+              onClick={handleOpenTrailer}
+              aria-label="Play Trailer"
+            >
+              <div className="play-circle-icon">
+                <span className="play-triangle">▶</span>
+              </div>
+              <span className="play-btn-text">PLAY TRAILER</span>
+            </button>
+          </div>
+
+          <div id="modalBody">
+            <button 
+              id="modalClose"
+              onClick={onClose}
+              aria-label="Close dialog"
+            >
+              ✕
+            </button>
+
+            <div id="modalTagline">{movie.tagline}</div>
+            <h2 id="modalTitle">{movie.t}</h2>
+
+            <div className="modal-tabs">
+              <button
+                className={activeTab === 'overview' ? 'active' : ''}
+                onClick={() => setActiveTab('overview')}
+              >
+                Overview
+              </button>
+              <button
+                className={activeTab === 'trailer' ? 'active' : ''}
+                onClick={() => {
+                  setActiveTab('trailer');
+                  handleOpenTrailer();
+                }}
+              >
+                ▶ Trailer
+              </button>
+              <button
+                className={activeTab === 'reviews' ? 'active' : ''}
+                onClick={() => setActiveTab('reviews')}
+              >
+                Reviews
+              </button>
+            </div>
+
+            {/* Scroll Progress Bar for Modal Content */}
+            <div className="modal-scroll-progress-wrapper">
+              <div className="modal-scroll-progress-bg" />
+              <ScrollProgress
+                className="modal-scroll-progress-bar"
+                containerRef={contentRef}
+                springOptions={{
+                  stiffness: 280,
+                  damping: 18,
+                  mass: 0.3,
+                }}
+              />
+            </div>
+
+            <div className="modal-content custom-scrollbar" data-lenis-prevent="true" ref={contentRef}>
+              {activeTab === 'overview' && (
+                <div className="tab-pane overview-pane">
+                  <div id="modalMeta">
+                    <span className="meta-year">{movie.y}</span>
+                    <span className="meta-genre">{movie.g}</span>
+                    {movie.runtime > 0 && <span className="meta-runtime">{movie.runtime} min</span>}
+                    <span className="meta-dir">Dir. {movie.dir}</span>
+                    <span className="meta-rating">★ {movie.r}</span>
+                  </div>
+                  <p id="modalBlurb">{movie.blurb}</p>
+                  
+                  {((movie.castMembers && movie.castMembers.length > 0) || movie.cast) && (
+                    <div className="modal-cast-section">
+                      <div className="cast-header-row">
+                        <div className="cast-label">
+                          <span>★</span>
+                          <span>Starring Cast</span>
+                        </div>
+                        <div className="cast-hint">Click actor to view their movies ↗</div>
+                      </div>
+                      <div className="cast-cards-grid">
+                        {movie.castMembers && movie.castMembers.length > 0 ? (
+                          movie.castMembers.map((member, idx) => (
+                            <div
+                              key={member.id || idx}
+                              className="cast-card"
+                              onClick={() => onSelectActor?.(member)}
+                              title={`Click to view all movies ${member.name} acted in`}
+                            >
+                              <div className="cast-avatar">
+                                {member.photo ? (
+                                  <img
+                                    src={member.photo}
+                                    alt={member.name}
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="cast-avatar-letter">
+                                    {member.name.charAt(0)}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="cast-card-info">
+                                <div className="cast-card-name">
+                                  <span>{member.name}</span>
+                                  <span className="cast-card-arrow">↗</span>
+                                </div>
+                                {member.character && (
+                                  <div className="cast-card-character">
+                                    as {member.character}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : movie.cast ? (
+                          movie.cast.split(',').map((name, idx) => {
+                            const trimmedName = name.trim();
+                            const castObj: CastMember = { name: trimmedName };
+                            return (
+                              <div
+                                key={idx}
+                                className="cast-card"
+                                onClick={() => onSelectActor?.(castObj)}
+                                title={`Click to view all movies ${trimmedName} acted in`}
+                              >
+                                <div className="cast-avatar">
+                                  <div className="cast-avatar-letter">
+                                    {trimmedName.charAt(0)}
+                                  </div>
+                                </div>
+                                <div className="cast-card-info">
+                                  <div className="cast-card-name">
+                                    <span>{trimmedName}</span>
+                                    <span className="cast-card-arrow">↗</span>
+                                  </div>
+                                  <div className="cast-card-character">
+                                    View filmography
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="overview-actions">
+                    <button
+                      className="modal-trailer-btn"
+                      onClick={handleOpenTrailer}
+                    >
+                      <span>▶</span>
+                      <span>Watch Trailer</span>
+                    </button>
+                    <button
+                      className={`modal-watchlist-btn ${isSaved ? 'saved' : ''}`}
+                      onClick={() => toggleWatch(movie.id)}
+                    >
+                      {isSaved ? '✓ In your watchlist' : '+ Add to watchlist'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'trailer' && (
+                <div className="tab-pane trailer-pane">
+                  <div
+                    className="trailer-thumb"
+                    onClick={handleOpenTrailer}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => e.key === 'Enter' && handleOpenTrailer(e)}
+                  >
+                    <img
+                      src={videoId 
+                        ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+                        : movie.img || ''}
+                      alt={`${movie.t} trailer`}
+                      onError={e => {
+                        if (videoId) {
+                          (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                        } else {
+                          (e.target as HTMLImageElement).src = movie.img || '';
+                        }
+                      }}
+                    />
+                    <div className="trailer-thumb-overlay">
+                      <div className="play-circle-icon">
+                        <span className="play-triangle">▶</span>
+                      </div>
+                      <div className="thumb-caption">
+                        <strong>PLAY FULL TRAILER</strong>
+                        <span>Click to watch in cinematic theater mode</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="trailer-external-bar">
+                    <span>Official Cinema Trailer</span>
+                    <a
+                      href={directYouTubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="trailer-ext-link"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      Open on YouTube ↗
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'reviews' && (
+                <div className="tab-pane reviews-pane">
+                  {movie.reviews && movie.reviews.length > 0 ? (
+                    <div className="reviews-list">
+                      {movie.reviews.map((review: Review, i: number) => (
+                        <div key={i} className="review-card">
+                          <div className="review-header">
+                            <span className="review-author">{review.author}</span>
+                            <span className="review-rating">
+                              {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                            </span>
+                          </div>
+                          <p className="review-text">"{review.text}"</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="no-reviews">
+                      No reviews yet. Be the first to rate!
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {trailerOpen && (
+        <div 
+          className="trailer-lightbox" 
+          onClick={() => setTrailerOpen(false)}
+        >
+          <div className="trailer-lightbox-inner" onClick={e => e.stopPropagation()}>
+            <div className="trailer-lightbox-header">
+              <div className="trailer-lightbox-title">
+                <span className="trailer-lightbox-label">Trailer</span>
+                <span className="trailer-lightbox-name">{movie.t} ({movie.y})</span>
+              </div>
+              <div className="trailer-lightbox-actions">
+                <a
+                  href={directYouTubeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="trailer-lightbox-yt-btn"
+                  onClick={e => e.stopPropagation()}
+                >
+                  Watch on YouTube ↗
+                </a>
+                <button 
+                  className="trailer-lightbox-close"
+                  onClick={() => setTrailerOpen(false)}
+                  aria-label="Close trailer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="trailer-lightbox-video">
+              <iframe
+                src={getTrailerEmbedUrl(movie)}
+                title={`${movie.t} Official Trailer`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                loading="eager"
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
+
+            <div className="trailer-lightbox-footer">
+              Press <kbd>ESC</kbd> or click outside to exit trailer
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAgeGate && (
+        <div 
+          className="trailer-lightbox age-gate-lightbox" 
+          onClick={() => setShowAgeGate(false)}
+          style={{ zIndex: 100000 }}
+        >
+          <div className="trailer-lightbox-inner" style={{ maxWidth: '500px', height: 'auto', padding: '40px', textAlign: 'center', background: '#0a0a0a', border: '1px solid #333' }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: '2rem', color: '#ff2e54', marginBottom: '16px', fontFamily: '"Bebas Neue", sans-serif', letterSpacing: '2px' }}>RESTRICTED CONTENT</h2>
+            <p style={{ fontSize: '1.1rem', marginBottom: '32px', color: '#ccc', lineHeight: '1.5' }}>
+              This trailer contains mature and graphic content. It requires age verification to view. Are you 18 years of age or older?
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button
+                style={{ flex: 1, padding: '12px 24px', background: '#ff2e54', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 'bold' }}
+                onClick={() => {
+                  setShowAgeGate(false);
+                  setTrailerOpen(true);
+                }}
+              >
+                Yes, I am 18+
+              </button>
+              <button
+                style={{ flex: 1, padding: '12px 24px', background: 'transparent', color: '#aaa', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: 'pointer', fontSize: '1.1rem' }}
+                onClick={() => setShowAgeGate(false)}
+              >
+                No, I am under 18
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>,
+    document.body
+  );
+};
+
+export default MovieModal;
