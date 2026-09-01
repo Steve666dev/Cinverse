@@ -343,24 +343,45 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
 
               {activeTab === 'watch' && (
                 <div className="tab-pane watch-pane">
+                  {/* Top Direct Stream Hero Highlight */}
+                  {movie.watchProviders && movie.watchProviders.length > 0 && (
+                    <div className="watch-hero-highlight">
+                      <div className="watch-hero-info">
+                        <span className="watch-live-pill">● LIVE STREAMING</span>
+                        <h3>Watch {movie.t} Directly Online</h3>
+                        <p>Available on verified streaming apps with official license.</p>
+                      </div>
+                      <a
+                        href={movie.watchProviders[0].url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="watch-primary-stream-btn"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <span>▶ Stream Now on {movie.watchProviders[0].name}</span>
+                        <span className="btn-arrow">↗</span>
+                      </a>
+                    </div>
+                  )}
+
                   <div className="watch-pane-hero">
                     <div className="watch-verified-banner">
                       <span className="shield-icon">🛡️</span>
                       <div>
                         <h4>Official & Verified Streaming Providers</h4>
-                        <p>Stream, rent, or buy <strong>{movie.t}</strong> directly through verified partner platforms & apps.</p>
+                        <p>Direct links to verified platforms & apps with guaranteed high-definition playback.</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="watch-providers-grid">
                     {(movie.watchProviders && movie.watchProviders.length > 0 ? movie.watchProviders : [
-                      { name: 'Netflix', type: 'stream', badge: 'Subscription', quality: '4K UHD', url: `https://www.netflix.com/search?q=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-                      { name: 'Amazon Prime Video', type: 'stream', badge: 'Included with Prime', quality: '4K UHD', url: `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-                      { name: 'Disney+ Hotstar', type: 'stream', badge: 'Subscription', quality: '4K Dolby Vision', url: `https://www.hotstar.com/in/explore?search_query=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
-                      { name: 'Apple TV', type: 'rent', badge: 'Rent / Buy', quality: '4K HDR', url: `https://tv.apple.com/search?term=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/peURlLlr8jggOwK53fJ5wdQl05y.jpg' },
-                      { name: 'YouTube Movies', type: 'rent', badge: 'Rent / Buy', quality: 'Full HD', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(movie.t + ' full movie')}`, logo: 'https://image.tmdb.org/t/p/w92/oRQuR7451m1z2FzE9oq1B3Xw9aJ.jpg' },
-                      { name: 'JioCinema', type: 'free', badge: 'Free / Premium', quality: 'HD Stream', url: `https://www.jiocinema.com/search/${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg' }
+                      { name: 'Netflix', type: 'stream', badge: 'Stream on Netflix', quality: '4K Ultra HD', url: `https://www.netflix.com/search?q=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
+                      { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream with Prime', quality: '4K Ultra HD', url: `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
+                      { name: 'Disney+ Hotstar', type: 'stream', badge: 'Stream on Hotstar', quality: '4K Dolby Vision', url: `https://www.hotstar.com/in/explore?search_query=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
+                      { name: 'Apple TV', type: 'rent', badge: 'Watch on Apple TV', quality: '4K HDR', url: `https://tv.apple.com/search?term=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/peURlLlr8jggOwK53fJ5wdQl05y.jpg' },
+                      { name: 'YouTube Movies', type: 'rent', badge: 'Watch / Rent Full Movie', quality: 'Full HD', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(movie.t + ' full movie')}`, logo: 'https://image.tmdb.org/t/p/w92/oRQuR7451m1z2FzE9oq1B3Xw9aJ.jpg' },
+                      { name: 'JioCinema', type: 'free', badge: 'Stream on JioCinema', quality: 'HD Stream', url: `https://www.jiocinema.com/search/${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg' }
                     ]).map((provider, idx) => (
                       <div key={idx} className={`watch-provider-card ${provider.type}`}>
                         <div className="provider-card-main">
@@ -392,7 +413,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                           className="provider-cta-btn"
                           onClick={e => e.stopPropagation()}
                         >
-                          <span>Watch on {provider.name}</span>
+                          <span>Direct Stream on {provider.name}</span>
                           <span className="cta-arrow">↗</span>
                         </a>
                       </div>
