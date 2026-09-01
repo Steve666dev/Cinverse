@@ -50,7 +50,7 @@ const getDirectYouTubeUrl = (movie: Movie): string => {
 };
 
 const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'trailer' | 'reviews'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'watch' | 'trailer' | 'reviews'>('overview');
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [showAgeGate, setShowAgeGate] = useState(false);
   const { watchlist, toggleWatch } = useWatchlist();
@@ -151,6 +151,12 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                 Overview
               </button>
               <button
+                className={activeTab === 'watch' ? 'active' : ''}
+                onClick={() => setActiveTab('watch')}
+              >
+                📺 Where to Watch
+              </button>
+              <button
                 className={activeTab === 'trailer' ? 'active' : ''}
                 onClick={() => {
                   setActiveTab('trailer');
@@ -193,6 +199,43 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                   </div>
                   <p id="modalBlurb">{movie.blurb}</p>
                   
+                  {/* Quick Streaming Access Bar in Overview */}
+                  <div className="modal-watch-quick-bar">
+                    <div className="watch-quick-header">
+                      <div className="watch-quick-title">
+                        <span className="verified-shield">✓</span>
+                        <span>Stream on Verified Apps</span>
+                      </div>
+                      <button 
+                        className="watch-all-link-btn"
+                        onClick={() => setActiveTab('watch')}
+                      >
+                        All platforms ({movie.watchProviders?.length || 6}) →
+                      </button>
+                    </div>
+                    <div className="watch-quick-providers">
+                      {(movie.watchProviders || []).slice(0, 4).map((provider, i) => (
+                        <a
+                          key={i}
+                          href={provider.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="quick-provider-pill"
+                          title={`Watch ${movie.t} on ${provider.name}`}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          {provider.logo ? (
+                            <img src={provider.logo} alt={provider.name} className="quick-provider-logo" />
+                          ) : (
+                            <span className="quick-provider-icon">▶</span>
+                          )}
+                          <span className="quick-provider-name">{provider.name}</span>
+                          <span className="quick-provider-arrow">↗</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
                   {((movie.castMembers && movie.castMembers.length > 0) || movie.cast) && (
                     <div className="modal-cast-section">
                       <div className="cast-header-row">
@@ -275,6 +318,13 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                   
                   <div className="overview-actions">
                     <button
+                      className="modal-stream-btn"
+                      onClick={() => setActiveTab('watch')}
+                    >
+                      <span>📺</span>
+                      <span>Where to Watch</span>
+                    </button>
+                    <button
                       className="modal-trailer-btn"
                       onClick={handleOpenTrailer}
                     >
@@ -288,6 +338,81 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                       {isSaved ? '✓ In your watchlist' : '+ Add to watchlist'}
                     </button>
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'watch' && (
+                <div className="tab-pane watch-pane">
+                  <div className="watch-pane-hero">
+                    <div className="watch-verified-banner">
+                      <span className="shield-icon">🛡️</span>
+                      <div>
+                        <h4>Official & Verified Streaming Providers</h4>
+                        <p>Stream, rent, or buy <strong>{movie.t}</strong> directly through verified partner platforms & apps.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="watch-providers-grid">
+                    {(movie.watchProviders && movie.watchProviders.length > 0 ? movie.watchProviders : [
+                      { name: 'Netflix', type: 'stream', badge: 'Subscription', quality: '4K UHD', url: `https://www.netflix.com/search?q=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
+                      { name: 'Amazon Prime Video', type: 'stream', badge: 'Included with Prime', quality: '4K UHD', url: `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
+                      { name: 'Disney+ Hotstar', type: 'stream', badge: 'Subscription', quality: '4K Dolby Vision', url: `https://www.hotstar.com/in/explore?search_query=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
+                      { name: 'Apple TV', type: 'rent', badge: 'Rent / Buy', quality: '4K HDR', url: `https://tv.apple.com/search?term=${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/peURlLlr8jggOwK53fJ5wdQl05y.jpg' },
+                      { name: 'YouTube Movies', type: 'rent', badge: 'Rent / Buy', quality: 'Full HD', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(movie.t + ' full movie')}`, logo: 'https://image.tmdb.org/t/p/w92/oRQuR7451m1z2FzE9oq1B3Xw9aJ.jpg' },
+                      { name: 'JioCinema', type: 'free', badge: 'Free / Premium', quality: 'HD Stream', url: `https://www.jiocinema.com/search/${encodeURIComponent(movie.t)}`, logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg' }
+                    ]).map((provider, idx) => (
+                      <div key={idx} className={`watch-provider-card ${provider.type}`}>
+                        <div className="provider-card-main">
+                          <div className="provider-logo-wrap">
+                            {provider.logo ? (
+                              <img src={provider.logo} alt={provider.name} className="provider-logo-img" />
+                            ) : (
+                              <div className="provider-logo-placeholder">{provider.name.charAt(0)}</div>
+                            )}
+                          </div>
+                          <div className="provider-details">
+                            <div className="provider-title-row">
+                              <span className="provider-name">{provider.name}</span>
+                              <span className="provider-verified-badge" title="Official Verified App / Platform">✓ Verified</span>
+                            </div>
+                            <div className="provider-meta-row">
+                              <span className={`provider-badge ${provider.type}`}>
+                                {provider.badge || (provider.type === 'stream' ? 'Stream Now' : provider.type === 'rent' ? 'Rent / Buy' : 'Free Stream')}
+                              </span>
+                              {provider.quality && <span className="provider-quality">{provider.quality}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <a
+                          href={provider.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="provider-cta-btn"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <span>Watch on {provider.name}</span>
+                          <span className="cta-arrow">↗</span>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+
+                  {movie.watchUrl && (
+                    <div className="watch-justwatch-bar">
+                      <span>Data powered by TMDb & Verified Stream Search</span>
+                      <a
+                        href={movie.watchUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="justwatch-link"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        Explore Complete Streaming Availability ↗
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
 

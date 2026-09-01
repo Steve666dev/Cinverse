@@ -22,6 +22,16 @@ export interface ActorDetails {
   movies: Movie[];
 }
 
+export interface WatchProvider {
+  id?: number;
+  name: string;
+  logo?: string;
+  type: 'stream' | 'rent' | 'buy' | 'free';
+  url: string;
+  quality?: string;
+  badge?: string;
+}
+
 export interface Movie {
   id: number;
   t: string;       // Title
@@ -41,4 +51,6 @@ export interface Movie {
   trailerUrl?: string;
   reviews?: Review[];
   isAdult?: boolean; // Flag for age restriction
+  watchProviders?: WatchProvider[];
+  watchUrl?: string; // Direct JustWatch / official watch hub link
 }
