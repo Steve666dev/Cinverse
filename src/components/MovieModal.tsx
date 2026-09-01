@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Movie, Review, CastMember } from '../types';
-import { useWatchlist } from '../context/WatchlistContext';
 import { ScrollProgress } from '@/components/core/scroll-progress';
 import { GlowEffect } from '@/components/core/glow-effect';
 import './MovieModal.css';
@@ -53,7 +52,6 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
   const [activeTab, setActiveTab] = useState<'overview' | 'watch' | 'trailer' | 'reviews'>('overview');
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [showAgeGate, setShowAgeGate] = useState(false);
-  const { watchlist, toggleWatch } = useWatchlist();
   const contentRef = useRef<HTMLDivElement>(null);
   
   const handleOpenTrailer = (e?: React.MouseEvent | React.KeyboardEvent) => {
@@ -96,7 +94,6 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
 
   if (!movie) return null;
 
-  const isSaved = watchlist.has(movie.id);
   const videoId = getYouTubeVideoId(movie);
   const directYouTubeUrl = getDirectYouTubeUrl(movie);
 
