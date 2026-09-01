@@ -200,6 +200,7 @@ mark { background: var(--blue); color: #fff; padding: 0 4px; border-radius: 3px;
 .grid-results .poster-card {
   width: 100%;
   flex: none;
+  padding: 0;
 }
 
 @media (max-width: 600px) {

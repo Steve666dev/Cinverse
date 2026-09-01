@@ -51,39 +51,68 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
     return <div className="poster-card hidden" aria-hidden="true" />;
   }
 
+  const [imgFailed, setImgFailed] = useState(false);
+
   return (
-    <div className={`poster-card`} data-id={movie.id} onMouseLeave={handleMouseOut}>
+    <div className="poster-card" data-id={movie.id} onMouseLeave={handleMouseOut}>
       <div 
         className={`poster-inner ${isClicked ? 'clicked' : ''}`} 
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onClick={handleClick}
       >
-        <div 
-          className={`poster-art motif-${movie.motif}`} 
-          style={movie.img ? { backgroundImage: `url('${movie.img}')` } : {}}
-        >
-          {isClicked && <div className="click-ripple"></div>}
-          <div className="grain"></div>
-          {movie.img && <div className="image-overlay"></div>}
-          <div className="vignette"></div>
-          
-          <div className="poster-tagline">{movie.tagline}</div>
-          <div className="poster-rating">★ {movie.r}</div>
-          
-          <div className="poster-title-block">
-            <div className="p-title">{movie.t}</div>
-            <div className="p-genre mono">{movie.y} · {movie.g}</div>
+        {isClicked && <div className="click-ripple"></div>}
+        
+        {/* Actual Poster Image Frame */}
+        {movie.img && !imgFailed ? (
+          <img 
+            src={movie.img} 
+            alt={movie.t} 
+            className="poster-img"
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <div className={`poster-fallback motif-${movie.motif}`}>
+            <div className="fallback-reel-icon">🎬</div>
+            <div className="fallback-title">{movie.t}</div>
+            <div className="fallback-genre">{movie.g}</div>
           </div>
-          
-          <button 
-            className={`heart-btn ${isSaved ? 'saved' : ''}`} 
-            onClick={handleHeartClick} 
-            aria-label="Save to watchlist"
-          >
-            ♥
-          </button>
+        )}
+
+        {/* Ambient Film Overlays */}
+        <div className="poster-gradient-overlay"></div>
+        <div className="poster-vignette"></div>
+
+        {/* Top Badges */}
+        <div className="poster-top-bar">
+          {movie.y > 0 && <span className="poster-year-badge">{movie.y}</span>}
+          <span className="poster-rating-badge">★ {movie.r || '7.5'}</span>
         </div>
+
+        {/* Play Icon on Hover */}
+        <div className="poster-play-cue">
+          <span className="play-triangle">▶</span>
+        </div>
+
+        {/* Bottom Details Block */}
+        <div className="poster-info-block">
+          <div className="poster-title" title={movie.t}>{movie.t}</div>
+          <div className="poster-subline">
+            <span>{movie.g?.split(',')[0]}</span>
+            {movie.runtime > 0 && <span>• {movie.runtime}m</span>}
+          </div>
+        </div>
+
+        {/* Watchlist Heart Button */}
+        <button 
+          className={`poster-heart-btn ${isSaved ? 'saved' : ''}`} 
+          onClick={handleHeartClick} 
+          aria-label="Save to watchlist"
+          title={isSaved ? "Remove from watchlist" : "Add to watchlist"}
+        >
+          ♥
+        </button>
       </div>
     </div>
   );

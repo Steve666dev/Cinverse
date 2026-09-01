@@ -10,9 +10,9 @@ section.reel-section{padding:90px 0 60px;} /* Bleed to edge */
 .reel-track-wrap{position:relative;}
 .reel-track{
   display:flex;
-  gap:0; /* Cards provide their own gap via padding */
+  gap: 22px;
   overflow-x:auto;
-  padding: 0 5%; /* Just 5% inset on sides */
+  padding: 16px 5% 32px;
   margin: 0;
   cursor:grab;
   scrollbar-width:none;
