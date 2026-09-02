@@ -205,4 +205,37 @@ mark { background: var(--blue); color: #fff; padding: 0 4px; border-radius: 3px;
   }
 }
 
+/* ── TextShimmerWave ── */
+@keyframes shimmer-wave {
+  0%, 100% {
+    color: var(--base-color, #fff);
+    transform:
+      translateZ(0)
+      scale(1)
+      rotateY(0deg);
+    text-shadow: none;
+  }
+  50% {
+    color: var(--base-gradient-color, #a0c4ff);
+    transform:
+      translateZ(var(--z-distance, 1px))
+      scale(var(--scale-distance, 1.1))
+      rotateY(var(--rotate-y-distance, 20deg));
+    text-shadow: 0 0 18px var(--base-gradient-color, #a0c4ff);
+  }
+}
 
+.text-shimmer-wave-root {
+  perspective: 800px;
+  display: inline-flex;
+  flex-wrap: nowrap;
+}
+
+.text-shimmer-wave-char {
+  display: inline-block;
+  animation: shimmer-wave
+    calc(var(--duration, 1s) * var(--spread, 1))
+    ease-in-out
+    calc(var(--index) * (var(--duration, 1s) * var(--spread, 1) / var(--total)) * 0.6)
+    infinite;
+}

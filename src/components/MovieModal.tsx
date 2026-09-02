@@ -4,6 +4,7 @@ import type { Movie, Review, CastMember } from '../types';
 import { useWatchlist } from '../context/WatchlistContext';
 import { ScrollProgress } from '@/components/core/scroll-progress';
 import { GlowEffect } from '@/components/core/glow-effect';
+import { TextShimmerWave } from '@/components/core/text-shimmer-wave';
 import './MovieModal.css';
 
 interface MovieModalProps {
@@ -151,7 +152,21 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
             </div>
 
             <div id="modalTagline">{movie.tagline}</div>
-            <h2 id="modalTitle">{movie.t}</h2>
+            <h2 id="modalTitle">
+              <TextShimmerWave
+                duration={2}
+                spread={1.2}
+                zDistance={2}
+                scaleDistance={1.08}
+                rotateYDistance={15}
+                style={{
+                  '--base-color': '#ffffff',
+                  '--base-gradient-color': '#f5c518',
+                } as React.CSSProperties}
+              >
+                {movie.t}
+              </TextShimmerWave>
+            </h2>
 
             <div className="modal-tabs">
               <button
