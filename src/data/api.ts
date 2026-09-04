@@ -1,27 +1,12 @@
 import type { Movie, Review, CastMember, ActorDetails, WatchProvider } from '../types';
-import CryptoJS from 'crypto-js';
 
 // ─── API Config ───────────────────────────────────────────────────────────────
-const SECRET = 'CINEMATIX_SECURE_KEY_2026';
-const decryptKey = (encrypted: string) => {
-  try {
-    const bytes = CryptoJS.AES.decrypt(encrypted, SECRET);
-    return bytes.toString(CryptoJS.enc.Utf8);
-  } catch {
-    return '';
-  }
-};
-
-const DEFAULT_OMDB_ENC = 'U2FsdGVkX1/voglqp1uFiQ8Ia8RowkkeUHU1PtgRSEU=';
-const DEFAULT_TMDB_ENC = 'U2FsdGVkX19+oMnz/X58Q6NkmQ8aE80POnCogtGik9UqD1jKIlYdnL88aZ0srtWRQOy/JNLTfYKC6MmWnyYH7Q==';
-
-const OMDB_KEY = decryptKey(import.meta.env.VITE_OMDB_API_KEY_ENC || DEFAULT_OMDB_ENC);
-const OMDB_URL = 'https://www.omdbapi.com/';
-
-const TMDB_KEY = decryptKey(import.meta.env.VITE_TMDB_API_KEY_ENC || DEFAULT_TMDB_ENC);
-const TMDB_URL = 'https://api.themoviedb.org/3';
-const TMDB_IMG = 'https://image.tmdb.org/t/p/w780'; // Upgraded from w500 to w780 HD
-const TMDB_ENABLED = Boolean(TMDB_KEY && TMDB_KEY.length > 10);
+// All TMDB / OMDb calls go through /api/* Vercel Edge proxies.
+// Keys live ONLY in server-side env vars (no VITE_ prefix) — never in the bundle.
+const OMDB_PROXY = '/api/omdb';
+const TMDB_PROXY = '/api/tmdb';
+const TMDB_IMG   = 'https://image.tmdb.org/t/p/w780';
+const TMDB_ENABLED = true; // proxy handles key availability server-side
 
 // Upgrade low-res OMDB/Amazon thumbnails to crystal clear 4K/HD original masters
 const upgradePosterUrl = (url?: string): string | undefined => {
@@ -484,8 +469,8 @@ export const fetchMovieById = async (imdbId: string, index: number): Promise<Mov
   if (sessionCache.has(cacheKey)) return sessionCache.get(cacheKey) ?? null;
 
   try {
-    // 1. Fetch full movie details from OMDb
-    const res = await fetch(`${OMDB_URL}?i=${imdbId}&apikey=${OMDB_KEY}&plot=full`);
+    // 1. Fetch full movie details from OMDb via proxy
+    const res = await fetch(`${OMDB_PROXY}?i=${imdbId}&plot=full`);
     if (!res.ok) throw new Error(`OMDb ${res.status}`);
     const data = await res.json();
     const movie = parseOMDb(data, index);
@@ -495,15 +480,15 @@ export const fetchMovieById = async (imdbId: string, index: number): Promise<Mov
     if (TMDB_ENABLED) {
       try {
         const findRes = await fetch(
-          `${TMDB_URL}/find/${imdbId}?api_key=${TMDB_KEY}&external_source=imdb_id`
-        );
+            `${TMDB_PROXY}?path=/find/${imdbId}&external_source=imdb_id`
+          );
         if (findRes.ok) {
           const findData = await findRes.json();
           const tmdbId: number | undefined = findData.movie_results?.[0]?.id;
           if (tmdbId) {
             const detailRes = await fetch(
-              `${TMDB_URL}/movie/${tmdbId}?api_key=${TMDB_KEY}&append_to_response=videos,credits,watch/providers`
-            );
+                `${TMDB_PROXY}?path=/movie/${tmdbId}&append=videos,credits,watch%2Fproviders`
+              );
             if (detailRes.ok) {
               const detailData = await detailRes.json();
               // Fill in extras OMDb doesn't have
@@ -552,7 +537,7 @@ const fetchTMDBMovieById = async (tmdbId: number, index: number): Promise<Movie 
 
   try {
     const res = await fetch(
-      `${TMDB_URL}/movie/${tmdbId}?api_key=${TMDB_KEY}&append_to_response=videos,credits,watch/providers`
+      `${TMDB_PROXY}?path=/movie/${tmdbId}&append=videos,credits,watch%2Fproviders`
     );
     if (!res.ok) throw new Error(`TMDB detail ${res.status}`);
     const data = await res.json();
@@ -575,7 +560,7 @@ export const fetchActorFilmography = async (actorIdOrName: number | string): Pro
     let personName = typeof actorIdOrName === 'string' ? actorIdOrName.trim() : '';
 
     if (!personId && personName) {
-      const searchRes = await fetch(`${TMDB_URL}/search/person?api_key=${TMDB_KEY}&query=${encodeURIComponent(personName)}`);
+      const searchRes = await fetch(`${TMDB_PROXY}?path=/search/person&query=${encodeURIComponent(personName)}`);
       if (searchRes.ok) {
         const searchData = await searchRes.json();
         const first = searchData.results?.[0];
@@ -589,8 +574,8 @@ export const fetchActorFilmography = async (actorIdOrName: number | string): Pro
     if (!personId) return null;
 
     const [personRes, creditsRes] = await Promise.all([
-      fetch(`${TMDB_URL}/person/${personId}?api_key=${TMDB_KEY}`),
-      fetch(`${TMDB_URL}/person/${personId}/movie_credits?api_key=${TMDB_KEY}`),
+      fetch(`${TMDB_PROXY}?path=/person/${personId}`),
+      fetch(`${TMDB_PROXY}?path=/person/${personId}/movie_credits`),
     ]);
 
     if (!creditsRes.ok) return null;
@@ -684,7 +669,7 @@ export const fetchIndiaTrendingMovies = async (): Promise<Movie[]> => {
   if (TMDB_ENABLED) {
     try {
       const res = await fetch(
-        `${TMDB_URL}/discover/movie?api_key=${TMDB_KEY}&with_origin_country=IN&sort_by=popularity.desc&vote_count.gte=30&page=1`
+        `${TMDB_PROXY}?path=/discover/movie&with_origin_country=IN&sort_by=popularity.desc&vote_count.gte=30&page=1`
       );
       if (res.ok) {
         const data = await res.json();
@@ -737,7 +722,7 @@ export const fetchRomanceDramaMovies = async (): Promise<Movie[]> => {
 // ─── TMDB keyword search ──────────────────────────────────────────────────────
 const tmdbSearch = async (query: string): Promise<Movie[]> => {
   const res = await fetch(
-    `${TMDB_URL}/search/movie?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=1`
+    `${TMDB_PROXY}?path=/search/movie&query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=1`
   );
   if (!res.ok) throw new Error(`TMDB search ${res.status}`);
   const data = await res.json();
@@ -755,7 +740,7 @@ const tmdbSearch = async (query: string): Promise<Movie[]> => {
 // ─── OMDb keyword search fallback ────────────────────────────────────────────
 const omdbSearch = async (query: string): Promise<Movie[]> => {
   const res = await fetch(
-    `${OMDB_URL}?s=${encodeURIComponent(query)}&type=movie&apikey=${OMDB_KEY}`
+    `${OMDB_PROXY}?s=${encodeURIComponent(query)}&type=movie`
   );
   if (!res.ok) throw new Error(`OMDb search ${res.status}`);
   const data = await res.json();
@@ -799,7 +784,6 @@ export const fetchByGenreAndLanguage = async (
   if (!TMDB_ENABLED) return [];
 
   const params = new URLSearchParams({
-    api_key: TMDB_KEY,
     sort_by: 'popularity.desc',
     include_adult: 'false',
     page: String(page),
@@ -815,7 +799,7 @@ export const fetchByGenreAndLanguage = async (
   }
 
   try {
-    const res = await fetch(`${TMDB_URL}/discover/movie?${params}`);
+    const res = await fetch(`${TMDB_PROXY}?path=/discover/movie&${params}`);
     if (!res.ok) throw new Error(`TMDB discover ${res.status}`);
     const data = await res.json();
     if (!Array.isArray(data.results) || data.results.length === 0) return [];
@@ -840,15 +824,14 @@ export const fetchTopRatedMovies = async (page = 1): Promise<Movie[]> => {
   if (!TMDB_ENABLED) return [];
 
   const params = new URLSearchParams({
-    api_key: TMDB_KEY,
     sort_by: 'vote_average.desc',
-    'vote_count.gte': '3000', // Ensure they are actually popular/top-rated
+    'vote_count.gte': '3000',
     include_adult: 'false',
     page: String(page),
   });
 
   try {
-    const res = await fetch(`${TMDB_URL}/discover/movie?${params}`);
+    const res = await fetch(`${TMDB_PROXY}?path=/discover/movie&${params}`);
     if (!res.ok) throw new Error(`TMDB top rated ${res.status}`);
     const data = await res.json();
     if (!Array.isArray(data.results) || data.results.length === 0) return [];
