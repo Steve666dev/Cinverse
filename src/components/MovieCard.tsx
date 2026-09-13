@@ -15,6 +15,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
   const cardRef = useRef<HTMLDivElement>(null);
   const [isClicked, setIsClicked] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
+  const [imgSrc, setImgSrc] = useState(movie.img);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
@@ -64,13 +65,20 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
         {isClicked && <div className="click-ripple"></div>}
         
         {/* Actual Poster Image Frame */}
-        {movie.img && !imgFailed ? (
+        {imgSrc && !imgFailed ? (
           <img 
-            src={movie.img} 
+            src={imgSrc} 
             alt={movie.t} 
             className="poster-img"
             loading="lazy"
-            onError={() => setImgFailed(true)}
+            onError={() => {
+              // If TMDB poster fails, try OMDb poster as backup
+              if (imgSrc !== movie.img && movie.img) {
+                setImgSrc(movie.img);
+              } else {
+                setImgFailed(true);
+              }
+            }}
           />
         ) : (
           <div className={`poster-fallback motif-${movie.motif}`}>

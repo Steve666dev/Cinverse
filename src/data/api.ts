@@ -494,6 +494,10 @@ export const fetchMovieById = async (imdbId: string, index: number): Promise<Mov
               // Fill in extras OMDb doesn't have
               if (detailData.runtime) movie.runtime = detailData.runtime;
               if (detailData.tagline)  movie.tagline = detailData.tagline;
+              // Prefer TMDB poster — higher res, no Amazon CDN failures
+              if (detailData.poster_path) {
+                movie.img = `${TMDB_IMG}${detailData.poster_path}`;
+              }
               if (detailData.credits?.cast?.length) {
                 const members: CastMember[] = detailData.credits.cast.slice(0, 12).map((c: any) => ({
                   id: c.id,
