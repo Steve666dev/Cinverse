@@ -14,6 +14,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
   const isSaved = watchlist.has(movie.id);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isClicked, setIsClicked] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
@@ -51,7 +52,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
     return <div className="poster-card hidden" aria-hidden="true" />;
   }
 
-  const [imgFailed, setImgFailed] = useState(false);
 
   return (
     <div className="poster-card" data-id={movie.id} onMouseLeave={handleMouseOut}>

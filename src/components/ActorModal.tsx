@@ -16,9 +16,10 @@ const ActorModal: React.FC<ActorModalProps> = ({ actor, onClose, onSelectMovie }
   const [isLoading, setIsLoading] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
+  // Reset when actor is cleared — intentional external state sync
   useEffect(() => {
     if (!actor) {
-      setDetails(null);
+      setDetails(null); // eslint-disable-line react/set-state-in-effect
       return;
     }
 

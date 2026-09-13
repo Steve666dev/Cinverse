@@ -66,15 +66,16 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
     }
   };
 
+  // Sync body scroll lock and reset modal state — intentional external state sync
   useEffect(() => {
     if (movie) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
-      setTrailerOpen(false);
-      setActiveTab('overview');
+      setTrailerOpen(false); // eslint-disable-line react/set-state-in-effect
+      setActiveTab('overview'); // eslint-disable-line react/set-state-in-effect
     }
-    
+
     return () => {
       document.body.style.overflow = '';
     };

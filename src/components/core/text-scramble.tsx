@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, type HTMLMotionProps } from 'framer-motion';
 
 export type TextScrambleProps = {
@@ -13,6 +13,8 @@ export type TextScrambleProps = {
 
 const defaultChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
 
+
+
 export function TextScramble({
   children,
   duration = 0.8,
@@ -22,14 +24,11 @@ export function TextScramble({
   ...props
 }: TextScrambleProps) {
   const [displayText, setDisplayText] = useState(children);
-  const [isScrambling, setIsScrambling] = useState(false);
+  const scrambling = useRef(false);
 
   const trigger = () => {
-    setIsScrambling(true);
-  };
-
-  useEffect(() => {
-    if (!isScrambling) return;
+    if (scrambling.current) return;
+    scrambling.current = true;
 
     let iterations = 0;
     const maxIterations = children.length;
@@ -37,36 +36,39 @@ export function TextScramble({
     const charsPerFrame = maxIterations / totalFrames;
 
     const interval = setInterval(() => {
-      setDisplayText((prevText) => {
-        const newText = prevText
+      setDisplayText(
+        children
           .split('')
-          .map((_, index) => {
-            if (index < iterations) {
-              return children[index];
-            }
-            return characterSet[Math.floor(Math.random() * characterSet.length)];
-          })
-          .join('');
-        return newText;
-      });
+          .map((_, i) =>
+            i < iterations
+              ? children[i]
+              : characterSet[Math.floor(Math.random() * characterSet.length)]
+          )
+          .join('')
+      );
 
       iterations += charsPerFrame;
 
       if (iterations >= maxIterations) {
         clearInterval(interval);
         setDisplayText(children);
-        setIsScrambling(false);
+        scrambling.current = false;
       }
     }, speed * 1000);
+  };
 
-    return () => clearInterval(interval);
-  }, [children, duration, speed, characterSet, isScrambling]);
-
+  // Trigger scramble when children text changes
+  const prevChildrenRef = useRef(children);
   useEffect(() => {
-    trigger();
-  }, [children]);
+    if (prevChildrenRef.current !== children) {
+      prevChildrenRef.current = children;
+      setDisplayText(children);
+      trigger();
+    }
+  }, [children]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const MotionComponent = motion.create(Component as any);
+  // Stable motion component — memo so it's never recreated on re-render
+  const MotionComponent = useMemo(() => motion.create(Component as any), [Component]); // eslint-disable-line react/static-components
 
   return (
     <MotionComponent onHoverStart={trigger} {...props}>
