@@ -1115,11 +1115,14 @@
   color: #fff;
 }
 
+/* ── Tablet / Small Desktop (768px) ── */
 @media (max-width: 768px) {
   #modalCard {
     flex-direction: column;
     height: 92vh;
     max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    margin: auto auto 0;
   }
   #modalPoster {
     flex: 0 0 200px;
@@ -1133,9 +1136,63 @@
     min-height: 0;
   }
   #modalTitle { font-size: clamp(1.6rem, 6vw, 2.2rem); }
-  .modal-tabs { overflow-x: auto; white-space: nowrap; }
+  .modal-tabs { overflow-x: auto; white-space: nowrap; padding-bottom: 2px; }
   .modal-tabs button { padding: 8px 12px 6px; font-size: 0.65rem; }
   .trailer-lightbox { padding: 10px; }
   .trailer-lightbox-name { font-size: 1.1rem; }
   .watch-providers-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Mobile (480px) ── */
+@media (max-width: 480px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  #modalCard {
+    height: 96vh;
+    max-height: 96vh;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 100%;
+  }
+  #modalPoster {
+    flex: 0 0 160px;
+    height: 160px;
+  }
+  #modalBody {
+    padding: 14px 16px 12px;
+  }
+  #modalTitle { font-size: clamp(1.3rem, 7vw, 1.8rem); }
+  .modal-meta-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .modal-close-btn {
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  .modal-action-bar {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .modal-action-bar button {
+    width: 100%;
+    justify-content: center;
+  }
+  .cast-scroll {
+    gap: 10px;
+  }
+  .cast-card {
+    flex: 0 0 70px;
+    width: 70px;
+  }
+  .cast-photo {
+    width: 54px;
+    height: 54px;
+  }
+}
+
