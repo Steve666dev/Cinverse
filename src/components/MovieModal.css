@@ -13,9 +13,9 @@
 
 /* Modal Card */
 #modalCard {
-  width: min(880px, 95vw);
-  height: min(86vh, 700px);
-  max-height: 86vh;
+  width: clamp(320px, 90vw, 1000px);
+  height: clamp(400px, 85vh, 850px);
+  max-height: 90vh;
   background: #0d0d0d;
   border: 1px solid var(--line-bright);
   display: flex;
@@ -34,7 +34,7 @@
 
 /* Poster panel */
 #modalPoster {
-  flex: 0 0 320px;
+  flex: 0 0 clamp(280px, 35%, 450px);
   height: 100%;
   position: relative;
   background-size: cover;
