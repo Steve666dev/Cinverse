@@ -16,6 +16,7 @@ section.reel-section{padding:90px 0 60px;} /* Bleed to edge */
   margin: 0;
   cursor:grab;
   scrollbar-width:none;
+  -webkit-overflow-scrolling: touch; /* smooth momentum scroll on iOS */
 }
 /* Ensure the last item gets right padding in scroll */
 .reel-track::after {
@@ -25,11 +26,24 @@ section.reel-section{padding:90px 0 60px;} /* Bleed to edge */
 .reel-track::-webkit-scrollbar { display: none; }
 .reel-track.dragging{cursor:grabbing;user-select:none;}
 
+/* ── Tablet (768px) ── */
+@media (max-width: 768px) {
+  section.reel-section { padding: 70px 0 40px; }
+  .reel-track { gap: 16px; padding: 12px 4% 24px; }
+  .reel-arrows { display: none; } /* hide arrows on touch devices */
+}
+
+/* ── Mobile (600px) ── */
 @media (max-width:600px){
-  section.reel-section{padding:60px 0 40px;}
+  section.reel-section{padding:50px 0 30px;}
   .reel-head {
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
+    gap: 8px;
+    margin-bottom: 16px;
   }
+  .reel-head h2 { font-size: clamp(1.4rem, 6vw, 1.8rem); }
+  .reel-head p { font-size: 0.8rem; }
+  .reel-track { gap: 12px; padding: 10px 4% 20px; }
 }
+
