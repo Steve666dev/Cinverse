@@ -11,7 +11,7 @@ import { useWatchlist } from './context/WatchlistContext';
 import { useRef } from 'react';
 import { useInView } from 'framer-motion';
 import { GlowEffectButton } from './components/GlowEffectButton';
-import { TextScramble } from './components/core/text-scramble';
+import { TextShimmerWave } from './components/core/text-shimmer-wave';
 import type { Movie, CastMember } from './types';
 import Lenis from 'lenis';
 
@@ -176,7 +176,16 @@ function App() {
           fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '.1em',
           textShadow: '0 0 20px rgba(96,165,250,0.5)'
         }}>
-          <TextScramble>CINEVERSE</TextScramble>
+          <TextShimmerWave 
+            className="cineverse-shimmer"
+            duration={1.2}
+            spread={1.5}
+            zDistance={4}
+            scaleDistance={1.05}
+            rotateYDistance={15}
+          >
+            CINEVERSE
+          </TextShimmerWave>
         </div>
         <div className="reel-spin"></div>
         <div style={{
