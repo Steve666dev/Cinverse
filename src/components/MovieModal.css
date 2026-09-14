@@ -13,8 +13,8 @@
 
 /* Modal Card */
 #modalCard {
-  width: min(880px, 95vw);
-  height: min(86vh, 700px);
+  width: min(920px, 95vw);
+  height: min(86vh, 720px);
   max-height: 86vh;
   background: #0d0d0d;
   border: 1px solid var(--line-bright);
@@ -34,7 +34,7 @@
 
 /* Poster panel */
 #modalPoster {
-  flex: 0 0 320px;
+  flex: 0 0 clamp(260px, 38%, 340px);
   height: 100%;
   position: relative;
   background-size: cover;
@@ -52,7 +52,7 @@
 /* Body */
 #modalBody {
   flex: 1 1 0;
-  padding: 32px 32px 24px;
+  padding: clamp(20px, 4vw, 40px) clamp(20px, 4vw, 40px) 24px;
   position: relative;
   min-width: 0;
   height: 100%;
@@ -117,7 +117,7 @@
   text-transform: uppercase;
 }
 #modalTitle {
-  font-size: clamp(1.3rem, 3vw, 1.9rem);
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
   color: var(--cream);
   margin-bottom: 16px;
   line-height: 0.95;
@@ -1197,29 +1197,45 @@
 }
 
 
-/* -- Mobile Responsiveness -- */
-@media (max-width: 768px) {
+/* ── Mobile & Tablet Responsiveness ── */
+@media (max-width: 850px) {
   #modalCard {
     flex-direction: column;
-    height: 90vh;
-    max-height: 90vh;
+    height: 92vh;
+    max-height: 92vh;
   }
   #modalPoster {
-    flex: 0 0 240px;
+    flex: 0 0 clamp(200px, 35vh, 320px);
     width: 100%;
   }
   #modalPoster::after {
-    background: linear-gradient(0deg, rgba(14,14,14,0.9) 0%, transparent 40%);
+    background: linear-gradient(0deg, rgba(14,14,14,0.95) 0%, transparent 45%);
   }
   #modalBody {
-    padding: 20px 20px 16px;
+    padding: 24px 20px 16px;
   }
   #modalTitle {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     margin-bottom: 12px;
   }
   .modal-top-actions {
-    top: 12px;
-    right: 12px;
+    top: 16px;
+    right: 16px;
+    background: rgba(0,0,0,0.5);
+    padding: 6px;
+    border-radius: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  #modalCard {
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
+  #modalPoster {
+    flex: 0 0 240px;
   }
 }
