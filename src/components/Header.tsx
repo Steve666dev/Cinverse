@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { TextScramble } from './core/text-scramble';
 import { useWatchlist } from '../context/WatchlistContext';
 import { Dock, DockItem, DockIcon, DockLabel } from './core/dock';
 import { Magnetic } from '@/components/core/magnetic';
@@ -120,9 +119,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
           range={160}
         >
           <button className="logo" onClick={handleLogoClick}>
-            <span className="logo-text">
-              <TextScramble>CINEVERSE</TextScramble>
-            </span>
+            <span className="logo-text">CINEVERSE</span>
           </button>
         </Magnetic>
       <nav className="links">
