@@ -60,7 +60,6 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
   const { watchlist } = useWatchlist();
   const [isOpen, setIsOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeGenre, setActiveGenre] = useState(GENRES[0]);
   const [activeLang, setActiveLang] = useState(LANGUAGES[0]);
@@ -156,47 +155,6 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
           Watchlist <span className="watch-count">{watchlist.size}</span>
         </button>
       </nav>
-
-      {/* Hamburger Toggle */}
-      <button 
-        className={`mobile-menu-toggle ${isMobileMenuOpen ? 'open' : ''}`}
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        aria-label="Toggle Menu"
-      >
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div className="mobile-menu-overlay">
-          <nav className="mobile-nav">
-            <a href="#india-trending" onClick={() => setIsMobileMenuOpen(false)}>Trending</a>
-            <a href="#mood" onClick={() => setIsMobileMenuOpen(false)}>For You</a>
-            <a href="#discover" onClick={() => setIsMobileMenuOpen(false)}>Discover</a>
-            <button
-              onClick={() => { setIsMobileMenuOpen(false); setIsOpen(true); setActiveTab('search'); }}
-            >
-              <Search size={16} /> Search
-            </button>
-            <button
-              onClick={() => { setIsMobileMenuOpen(false); setIsOpen(true); setActiveTab('genre'); }}
-            >
-              <Film size={16} /> Genre
-            </button>
-            <button
-              onClick={() => { setIsMobileMenuOpen(false); setIsOpen(true); setActiveTab('language'); }}
-            >
-              <Languages size={16} /> Language
-            </button>
-            <button onClick={() => { setIsMobileMenuOpen(false); handleWatchlistClick(); }}>
-              Watchlist ({watchlist.size})
-            </button>
-          </nav>
-        </div>
-      )}
-
 
       {/* Unified Popup rendered into document.body */}
       {isOpen && createPortal(

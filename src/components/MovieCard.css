@@ -1,29 +1,9 @@
 .poster-card {
-  flex: 0 0 clamp(140px, 40vw, 220px);
-  width: clamp(140px, 40vw, 220px);
+  flex: 0 0 220px;
+  width: 220px;
   perspective: 1000px;
   padding: 10px;
   user-select: none;
-}
-
-/* Tablet */
-@media (max-width: 768px) {
-  .poster-card {
-    flex: 0 0 clamp(140px, 38vw, 180px);
-    width: clamp(140px, 38vw, 180px);
-    padding: 6px;
-  }
-}
-
-/* Mobile */
-@media (max-width: 480px) {
-  .poster-card {
-    flex: 0 0 clamp(120px, 42vw, 160px);
-    width: clamp(120px, 42vw, 160px);
-    padding: 4px;
-  }
-  .poster-title { font-size: 1.1rem; }
-  .poster-top-bar { top: 6px; left: 6px; right: 6px; }
 }
 
 .poster-inner {
