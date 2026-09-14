@@ -471,8 +471,8 @@ nav.links a:hover::after { width: 100%; }
   letter-spacing: .06em;
 }
 
-@media (max-width: 900px) {
-  nav.links a, .nav-filter-btn { display: none; }
+@media (max-width: 1150px) {
+  nav.links { display: none; }
 }
 
 @media (max-width: 600px) {
@@ -543,7 +543,7 @@ nav.links a:hover::after { width: 100%; }
   transform: rotate(-45deg);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1150px) {
   .mobile-menu-toggle {
     display: flex;
   }
