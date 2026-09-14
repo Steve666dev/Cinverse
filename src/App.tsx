@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import MovieReel from './components/MovieReel';
@@ -8,12 +8,19 @@ import MovieModal from './components/MovieModal';
 import ActorModal from './components/ActorModal';
 import { fetchMoviesFromAPI, fetchIndiaTrendingMovies, fetchTrendingMovies, fetchScifiMovies, fetchRomanceDramaMovies, fetchByGenreAndLanguage } from './data/api';
 import { useWatchlist } from './context/WatchlistContext';
-import { useRef } from 'react';
 import { useInView } from 'framer-motion';
 import { GlowEffectButton } from './components/GlowEffectButton';
 import { TextScramble } from './components/core/text-scramble';
 import type { Movie, CastMember } from './types';
 import Lenis from 'lenis';
+
+// Module-level constant — never rebuilt on render
+const GENRE_NAMES: Record<number, string> = {
+  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+  27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance',
+  878: 'Sci-Fi', 53: 'Thriller', 10752: 'War', 37: 'Western',
+};
 
 function App() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,8 +109,6 @@ function App() {
     };
   }, []);
 
-
-
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
     if (!query) {
@@ -123,24 +128,19 @@ function App() {
     }
   };
 
-  // Build a combined deduplicated movie map for modal lookups
-  const allKnownMovies = [
-    ...indiaTrendingMovies, ...trendingMovies, ...scifiMovies,
-    ...romanceMovies, ...searchResults, ...exploredMovies
-  ];
-  const uniqueMoviesMap = new Map<number, Movie>();
-  allKnownMovies.forEach(m => uniqueMoviesMap.set(m.id, m));
+  // Memoized movie map — only rebuilt when movie arrays change
+  const uniqueMoviesMap = useMemo(() => {
+    const map = new Map<number, Movie>();
+    [...indiaTrendingMovies, ...trendingMovies, ...scifiMovies,
+     ...romanceMovies, ...searchResults, ...exploredMovies
+    ].forEach(m => map.set(m.id, m));
+    return map;
+  }, [indiaTrendingMovies, trendingMovies, scifiMovies, romanceMovies, searchResults, exploredMovies]);
 
-  const watchlistMovies = Array.from(watchlist)
-    .map(id => uniqueMoviesMap.get(id))
-    .filter((m): m is Movie => m !== undefined);
-
-  const GENRE_NAMES: Record<number, string> = {
-    28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
-    99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
-    27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance',
-    878: 'Sci-Fi', 53: 'Thriller', 10752: 'War', 37: 'Western',
-  };
+  const watchlistMovies = useMemo(
+    () => Array.from(watchlist).map(id => uniqueMoviesMap.get(id)).filter((m): m is Movie => m !== undefined),
+    [watchlist, uniqueMoviesMap]
+  );
 
   const handleDiscover = async (genreId: number, langCode: string) => {
     setIsExploring(true);
@@ -234,7 +234,6 @@ function App() {
 
         <MovieReel
           id="india-trending"
-
           title="India's Trending"
           description="High-octane blockbusters, pan-Indian epics, and trending cinema across India."
           movies={indiaTrendingMovies}
@@ -243,7 +242,6 @@ function App() {
 
         <MovieReel
           id="trending"
-
           title="Global Trending"
           description="Critically acclaimed films the whole world is watching right now."
           movies={trendingMovies}
@@ -252,7 +250,6 @@ function App() {
 
         <MovieReel
           id="scifi"
-
           title="Worlds Beyond Ours"
           description="Sci-fi and fantasy — for when reality needs a rewrite."
           movies={scifiMovies}
@@ -261,7 +258,6 @@ function App() {
 
         <MovieReel
           id="drama"
-
           title="Heart & Soul"
           description="Emotionally gripping dramas and romance that stay with you."
           movies={romanceMovies}

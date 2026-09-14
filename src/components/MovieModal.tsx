@@ -73,6 +73,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
     } else {
       document.body.style.overflow = '';
       setTrailerOpen(false); // eslint-disable-line react/set-state-in-effect
+      setShowAgeGate(false); // eslint-disable-line react/set-state-in-effect
       setActiveTab('overview'); // eslint-disable-line react/set-state-in-effect
     }
 

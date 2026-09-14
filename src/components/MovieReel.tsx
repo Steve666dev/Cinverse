@@ -14,7 +14,7 @@ interface MovieReelProps {
 
 const MovieReel: React.FC<MovieReelProps> = ({ id, title, description, movies, onOpenModal }) => {
   const trackRef = useRef<HTMLDivElement>(null);
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduceMotion = useRef(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const headerRef = useRef(null);
   const isIntersecting = useInView(headerRef, { once: true, amount: 0.15 });
 
@@ -23,7 +23,7 @@ const MovieReel: React.FC<MovieReelProps> = ({ id, title, description, movies, o
     if (trackRef.current) {
       trackRef.current.scrollBy({
         left: 260 * direction,
-        behavior: reduceMotion ? 'auto' : 'smooth'
+        behavior: reduceMotion.current ? 'auto' : 'smooth'
       });
     }
   };

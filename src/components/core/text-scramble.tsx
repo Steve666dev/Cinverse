@@ -1,6 +1,4 @@
-'use client';
-
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, type HTMLMotionProps } from 'framer-motion';
 
 export type TextScrambleProps = {
@@ -13,8 +11,6 @@ export type TextScrambleProps = {
 
 const defaultChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
 
-
-
 export function TextScramble({
   children,
   duration = 0.8,
@@ -26,7 +22,7 @@ export function TextScramble({
   const [displayText, setDisplayText] = useState(children);
   const scrambling = useRef(false);
 
-  const trigger = () => {
+  const trigger = useCallback(() => {
     if (scrambling.current) return;
     scrambling.current = true;
 
@@ -55,18 +51,17 @@ export function TextScramble({
         scrambling.current = false;
       }
     }, speed * 1000);
-  };
+  }, [children, duration, speed, characterSet]);
 
   // Trigger scramble on mount and when children text changes
   const prevChildrenRef = useRef(children);
   useEffect(() => {
-    // Trigger on mount or children change
     if (prevChildrenRef.current !== children) {
       prevChildrenRef.current = children;
       setDisplayText(children);
     }
     trigger();
-  }, [children]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [children, trigger]);
 
   // Stable motion component — memo so it's never recreated on re-render
   const MotionComponent = useMemo(() => motion.create(Component as any), [Component]); // eslint-disable-line react/static-components
