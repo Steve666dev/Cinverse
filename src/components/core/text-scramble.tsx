@@ -57,14 +57,15 @@ export function TextScramble({
     }, speed * 1000);
   };
 
-  // Trigger scramble when children text changes
+  // Trigger scramble on mount and when children text changes
   const prevChildrenRef = useRef(children);
   useEffect(() => {
+    // Trigger on mount or children change
     if (prevChildrenRef.current !== children) {
       prevChildrenRef.current = children;
       setDisplayText(children);
-      trigger();
     }
+    trigger();
   }, [children]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stable motion component — memo so it's never recreated on re-render
