@@ -6,14 +6,13 @@ import { useInView } from 'framer-motion';
 
 interface MovieReelProps {
   id: string;
-  reelNumber: string;
   title: string;
   description: string;
   movies: Movie[];
   onOpenModal: (id: number, movie: Movie) => void;
 }
 
-const MovieReel: React.FC<MovieReelProps> = ({ id, reelNumber, title, description, movies, onOpenModal }) => {
+const MovieReel: React.FC<MovieReelProps> = ({ id, title, description, movies, onOpenModal }) => {
   const trackRef = useRef<HTMLDivElement>(null);
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const headerRef = useRef(null);
@@ -35,7 +34,6 @@ const MovieReel: React.FC<MovieReelProps> = ({ id, reelNumber, title, descriptio
     <section className="reel-section" id={id}>
       <div ref={headerRef} className={`reel-head reveal ${isIntersecting ? 'in-view' : ''}`}>
         <div>
-          <div className="num">REEL {reelNumber}</div>
           <h2>{title}</h2>
           <p>{description}</p>
         </div>

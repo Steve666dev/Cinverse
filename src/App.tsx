@@ -234,7 +234,7 @@ function App() {
 
         <MovieReel
           id="india-trending"
-          reelNumber="01"
+
           title="India's Trending"
           description="High-octane blockbusters, pan-Indian epics, and trending cinema across India."
           movies={indiaTrendingMovies}
@@ -243,7 +243,7 @@ function App() {
 
         <MovieReel
           id="trending"
-          reelNumber="02"
+
           title="Global Trending"
           description="Critically acclaimed films the whole world is watching right now."
           movies={trendingMovies}
@@ -252,7 +252,7 @@ function App() {
 
         <MovieReel
           id="scifi"
-          reelNumber="03"
+
           title="Worlds Beyond Ours"
           description="Sci-fi and fantasy — for when reality needs a rewrite."
           movies={scifiMovies}
@@ -261,7 +261,7 @@ function App() {
 
         <MovieReel
           id="drama"
-          reelNumber="04"
+
           title="Heart & Soul"
           description="Emotionally gripping dramas and romance that stay with you."
           movies={romanceMovies}
