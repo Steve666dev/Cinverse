@@ -124,9 +124,6 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
           </button>
         </Magnetic>
       <nav className="links">
-        <a href="#india-trending">Trending</a>
-        <a href="#mood">For You</a>
-        <a href="#discover">Discover</a>
         <button
           className="nav-search-btn"
           onClick={() => { setIsOpen(true); setActiveTab('search'); }}
@@ -172,9 +169,6 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
       {isMobileMenuOpen && (
         <div className="mobile-menu-overlay">
           <nav className="mobile-nav">
-            <a href="#india-trending" onClick={() => setIsMobileMenuOpen(false)}>Trending</a>
-            <a href="#mood" onClick={() => setIsMobileMenuOpen(false)}>For You</a>
-            <a href="#discover" onClick={() => setIsMobileMenuOpen(false)}>Discover</a>
             <button
               onClick={() => { setIsMobileMenuOpen(false); setIsOpen(true); setActiveTab('search'); }}
             >
