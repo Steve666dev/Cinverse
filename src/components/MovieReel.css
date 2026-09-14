@@ -47,3 +47,20 @@ section.reel-section{padding:90px 0 60px;} /* Bleed to edge */
   .reel-track { gap: 12px; padding: 10px 4% 20px; }
 }
 
+
+/* -- Mobile Responsiveness -- */
+@media (max-width: 768px) {
+  .reel-title {
+    font-size: 1.25rem;
+    padding-left: 5%;
+  }
+  .reel-track {
+    padding-left: 5%;
+    padding-right: 5%;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .reel-track::-webkit-scrollbar {
+    display: none;
+  }
+}
