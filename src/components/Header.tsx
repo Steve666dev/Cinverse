@@ -116,7 +116,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
   const scrambleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const shapes = ['●', '■', '▲', '◆', '★', '▼', '◉'];
-  const SHAPE_FONT_SIZE = '1.55rem'; // Tuned to perfectly match Bebas Neue visual cap-height
+  const SHAPE_FONT_SIZE = '1.3rem'; // Tuned to perfectly match Bebas Neue visual cap-height
   
   const triggerTargetedGlitch = (charEl: HTMLElement) => {
     if (gsap.isTweening(charEl)) return;
@@ -129,10 +129,12 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
       rotationX: 180,
       ease: "power2.in",
       onComplete: () => {
-        charEl.innerText = shapes[Math.floor(Math.random() * shapes.length)];
-        charEl.style.color = `hsl(${Math.random() * 360}, 90%, 65%)`;
-        charEl.style.fontSize = SHAPE_FONT_SIZE;
-        charEl.style.lineHeight = '1';
+        const shape = shapes[Math.floor(Math.random() * shapes.length)];
+        const color = `hsl(${Math.random() * 360}, 90%, 65%)`;
+        
+        // Wrap the shape in a span that squishes its width by 40% (scaleX 0.6) 
+        // to perfectly match the highly condensed "Bebas Neue" aspect ratio.
+        charEl.innerHTML = `<span style="display: inline-block; font-size: ${SHAPE_FONT_SIZE}; transform: scaleX(0.6) scaleY(1.05); color: ${color}; line-height: 1;">${shape}</span>`;
         
         gsap.to(charEl, {
           duration: 0.25,
@@ -150,9 +152,6 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
                 ease: "power2.in",
                 onComplete: () => {
                   charEl.innerText = originalText || '';
-                  charEl.style.color = '#ffffff';
-                  charEl.style.fontSize = ''; 
-                  charEl.style.lineHeight = '';
                   
                   gsap.to(charEl, {
                     duration: 0.25,
