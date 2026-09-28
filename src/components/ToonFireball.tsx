@@ -40,7 +40,7 @@ const TEX_WATER =
     `)
 
 const REF_EYE = [
-    3.4369982203815655, 3.5239085092722098, 2.994862383531814,
+    0, 0, 6,
 ] as const
 const REF_DIST = Math.hypot(REF_EYE[0], REF_EYE[1], REF_EYE[2])
 const DEFAULT_DISTANCE = 6
@@ -934,7 +934,7 @@ export default function ToonFireball(props: ToonFireballProps) {
             gl.frontFace(gl.CCW)
 
             gl.useProgram(pBall)
-            compose(model, 0, -1 * SCENE_SCALE, 0, 0, 0.78 * SCENE_SCALE, 0.78 * SCENE_SCALE, 0.78 * SCENE_SCALE)
+            compose(model, 0, -1.8 * SCENE_SCALE, 0, 0, 0.78 * SCENE_SCALE, 0.78 * SCENE_SCALE, 0.78 * SCENE_SCALE)
             multiply(mv, view, model)
             gl.uniformMatrix4fv(uBall.projectionMatrix, false, proj)
             gl.uniformMatrix4fv(uBall.modelViewMatrix, false, mv)
@@ -956,13 +956,9 @@ export default function ToonFireball(props: ToonFireballProps) {
             gl.enable(gl.BLEND)
             gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 
-            const coneZ = (x: number) => view[2] * x + view[14]
-            const flameX = (1 - 4.78) * SCENE_SCALE
-            const steamX = (1 - 4.05) * SCENE_SCALE
-            
             const drawFlame = () => {
                 gl.useProgram(pFlame)
-                compose(model, flameX, 0, 0, -Math.PI / 2, 2 * SCENE_SCALE, 2 * SCENE_SCALE, 2 * SCENE_SCALE)
+                compose(model, 0, 0.5 * SCENE_SCALE, 0, 0, 2 * SCENE_SCALE, 2 * SCENE_SCALE, 2 * SCENE_SCALE)
                 multiply(mv, view, model)
                 gl.uniformMatrix4fv(uFlame.projectionMatrix, false, proj)
                 gl.uniformMatrix4fv(uFlame.modelViewMatrix, false, mv)
@@ -975,7 +971,7 @@ export default function ToonFireball(props: ToonFireballProps) {
             }
             const drawSteam = () => {
                 gl.useProgram(pSteam)
-                compose(model, steamX, 0, 0, -Math.PI / 2, 1.5 * SCENE_SCALE, 1.7 * SCENE_SCALE, 1.5 * SCENE_SCALE)
+                compose(model, 0, 1.2 * SCENE_SCALE, 0, 0, 1.5 * SCENE_SCALE, 1.7 * SCENE_SCALE, 1.5 * SCENE_SCALE)
                 multiply(mv, view, model)
                 gl.uniformMatrix4fv(uSteam.projectionMatrix, false, proj)
                 gl.uniformMatrix4fv(uSteam.modelViewMatrix, false, mv)
@@ -986,13 +982,9 @@ export default function ToonFireball(props: ToonFireballProps) {
                 gl.uniform3fv(uSteam.color4, L.color4)
                 drawMesh(mSteam, aSteam)
             }
-            if (coneZ(flameX) <= coneZ(steamX)) {
-                drawFlame()
-                drawSteam()
-            } else {
-                drawSteam()
-                drawFlame()
-            }
+
+            drawFlame()
+            drawSteam()
 
             gl.disable(gl.DEPTH_TEST)
             gl.disable(gl.BLEND)
