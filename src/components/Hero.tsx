@@ -57,7 +57,15 @@ const Hero: React.FC = () => {
       </p>
       <div className="scroll-cue">
         SCROLL
-        <div style={{ width: '120px', height: '160px', marginTop: '10px', position: 'relative', zIndex: -1 }}>
+        <div style={{ 
+          width: '160px', 
+          height: '160px', 
+          marginTop: '10px', 
+          position: 'relative', 
+          zIndex: -1,
+          mixBlendMode: 'screen',
+          transform: 'rotate(90deg)'
+        }}>
           <ToonFireball 
             background="transparent" 
             baseColor="#ff4500" 
