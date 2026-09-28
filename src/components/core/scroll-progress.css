@@ -1,0 +1,17 @@
+/* ── Scroll Progress Component ── */
+.scroll-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.8) 75%,
+    #ffffff 100%
+  );
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+  z-index: 10;
+  pointer-events: none;
+}

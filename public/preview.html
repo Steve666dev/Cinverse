@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glorious Purpose - Cinematic 3D Intro</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #000;
+      font-family: 'Inter', sans-serif;
+      color: white;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.95) 100%);
+      opacity: 0; /* Starts hidden, fades in at the end */
+    }
+    h1 {
+      font-size: 6rem;
+      letter-spacing: 1.5rem;
+      text-transform: uppercase;
+      margin: 0;
+      font-weight: 100;
+      text-shadow: 0 0 30px rgba(40, 255, 100, 0.6);
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    p {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      letter-spacing: 0.3rem;
+      color: #ccc;
+      opacity: 0;
+    }
+    #play-button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px 40px;
+      font-size: 1.5rem;
+      background: transparent;
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 5px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      transition: all 0.3s ease;
+      z-index: 20;
+      backdrop-filter: blur(5px);
+    }
+    #play-button:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.5);
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+
+  <button id="play-button">Start Sequence</button>
+
+  <div id="ui-layer">
+    <h1 id="title">Yggdrasil</h1>
+    <p id="subtitle">FOR YOU. FOR ALL OF US.</p>
+  </div>
+
+  <script>
+    // 1. Core Scene Setup
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.05);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, -10, 15); // Start looking up from the bottom
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // optimize for high DPI
+    // Post-processing simulation (additive blending tricks)
+    document.body.appendChild(renderer.domElement);
+
+    // 2. Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.02);
+    scene.add(ambientLight);
+
+    const magicLight = new THREE.PointLight(0x00ff44, 0, 50); // Starts at 0 intensity (hidden)
+    magicLight.position.set(0, 0, 0);
+    scene.add(magicLight);
+
+    // 3. The Silhouette (Loki)
+    const lokiGroup = new THREE.Group();
+    // A stylized cloaked figure (using a simple cone/cylinder combo colored pure black)
+    const cloakGeo = new THREE.CylinderGeometry(0.2, 1.2, 3, 32);
+    const cloakMat = new THREE.MeshBasicMaterial({ color: 0x050505 }); // Pure darkness
+    const cloak = new THREE.Mesh(cloakGeo, cloakMat);
+    cloak.position.y = -1.5;
+    lokiGroup.add(cloak);
+    
+    // Start Loki way down
+    lokiGroup.position.set(0, -15, 0);
+    scene.add(lokiGroup);
+
+    // 4. The Temporal Strands (Dying Multiverse)
+    const strandCount = 15000;
+    const strandGeo = new THREE.BufferGeometry();
+    const strandPositions = new Float32Array(strandCount * 3);
+    const strandColors = new Float32Array(strandCount * 3);
+    
+    // Store original target positions for the tree shape
+    const treePositions = new Float32Array(strandCount * 3);
+    const randomPositions = new Float32Array(strandCount * 3);
+
+    for(let i = 0; i < strandCount; i++) {
+      const i3 = i * 3;
+      
+      // Chaotic starting positions (dying timelines)
+      randomPositions[i3] = (Math.random() - 0.5) * 40;
+      randomPositions[i3+1] = (Math.random() - 0.5) * 40;
+      randomPositions[i3+2] = (Math.random() - 0.5) * 40;
+      
+      // Set current pos to chaotic
+      strandPositions[i3] = randomPositions[i3];
+      strandPositions[i3+1] = randomPositions[i3+1];
+      strandPositions[i3+2] = randomPositions[i3+2];
+
+      // Target positions (Yggdrasil Tree Shape - Hourglass / Roots & Branches)
+      const height = (Math.random() - 0.5) * 30;
+      // Radius expands at top and bottom, pinched in middle
+      const radius = (Math.abs(height) * 0.4) + Math.random() * 2;
+      const angle = Math.random() * Math.PI * 2;
+      
+      treePositions[i3] = Math.cos(angle) * radius;
+      treePositions[i3+1] = height;
+      treePositions[i3+2] = Math.sin(angle) * radius;
+
+      // Initial color (Dying blue/white)
+      strandColors[i3] = 0.5; // R
+      strandColors[i3+1] = 0.7; // G
+      strandColors[i3+2] = 1.0; // B
+    }
+
+    strandGeo.setAttribute('position', new THREE.BufferAttribute(strandPositions, 3));
+    strandGeo.setAttribute('color', new THREE.BufferAttribute(strandColors, 3));
+    
+    const strandMat = new THREE.PointsMaterial({
+      size: 0.05,
+      vertexColors: true,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false
+    });
+    
+    const strands = new THREE.Points(strandGeo, strandMat);
+    scene.add(strands);
+
+
+    // State variables for animation
+    let time = 0;
+    let isTransforming = false;
+    let magicPower = 0; // 0 to 1
+
+    // 5. Animation Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      time += 0.01;
+
+      const positions = strandGeo.attributes.position.array;
+      const colors = strandGeo.attributes.color.array;
+
+      for(let i = 0; i < strandCount; i++) {
+        const i3 = i * 3;
+        
+        if (!isTransforming) {
+          // Chaotic floating
+          positions[i3] += Math.sin(time + i) * 0.02;
+          positions[i3+1] += Math.cos(time + i) * 0.02;
+        } else {
+          // Interpolate to Tree Shape
+          positions[i3] += (treePositions[i3] - positions[i3]) * 0.02;
+          positions[i3+1] += (treePositions[i3+1] - positions[i3+1]) * 0.02;
+          positions[i3+2] += (treePositions[i3+2] - positions[i3+2]) * 0.02;
+          
+          // Interpolate Color to Green Magic
+          colors[i3] += (0.1 - colors[i3]) * 0.05;    // R -> low
+          colors[i3+1] += (1.0 - colors[i3+1]) * 0.05; // G -> high (glowing green)
+          colors[i3+2] += (0.2 - colors[i3+2]) * 0.05; // B -> low
+        }
+      }
+      
+      // Update geometry buffers
+      strandGeo.attributes.position.needsUpdate = true;
+      if (isTransforming) strandGeo.attributes.color.needsUpdate = true;
+      
+      // Rotate entire tree slowly
+      if (isTransforming) {
+        strands.rotation.y += 0.002;
+        magicLight.intensity = 5 + Math.sin(time * 5) * 1.5; // Pulsing green light
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+
+    // 6. Timeline (Triggered on Click)
+    document.getElementById('play-button').addEventListener('click', () => {
+      document.getElementById('play-button').style.display = 'none';
+      
+      const tl = gsap.timeline();
+
+      // Scene 1: Rise of the Silhouette
+      tl.to(lokiGroup.position, {
+        y: 0, // Rise to center
+        duration: 8,
+        ease: "power2.inOut"
+      }, 0);
+
+      tl.to(camera.position, {
+        y: 2,
+        duration: 8,
+        ease: "power1.inOut"
+      }, 0);
+
+      // Scene 2: The Infusion (Grasping the timelines)
+      tl.call(() => {
+        isTransforming = true;
+        // BOOM - flash of magic
+        gsap.to(magicLight, { intensity: 10, distance: 100, duration: 0.5 });
+        gsap.to(scene.fog, { color: 0x001100, duration: 2 });
+      }, null, 7.5);
+
+      // Scene 3: Camera pull back to reveal Yggdrasil
+      tl.to(camera.position, {
+        z: 35,
+        y: 5,
+        duration: 10,
+        ease: "power2.out"
+      }, 8);
+
+      // Show UI
+      tl.to(document.getElementById('ui-layer'), {
+        opacity: 1,
+        duration: 2
+      }, 12);
+      
+      tl.to(document.getElementById('title'), {
+        opacity: 1,
+        scale: 1,
+        duration: 3,
+        ease: "power4.out"
+      }, 13);
+
+      tl.to(document.getElementById('subtitle'), {
+        opacity: 1,
+        duration: 2
+      }, 14);
+
+    });
+
+    // Handle Resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+  </script>
+</body>
+</html>
