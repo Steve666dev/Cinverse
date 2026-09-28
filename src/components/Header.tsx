@@ -204,7 +204,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
     return () => {
       clearTimeout(initialTimeout);
       if (scrambleIntervalRef.current) {
-        clearTimeout(scrambleIntervalRef.current as NodeJS.Timeout);
+        clearTimeout(scrambleIntervalRef.current as number);
       }
     };
   }, []);
