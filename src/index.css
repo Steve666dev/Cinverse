@@ -183,16 +183,31 @@ mark { background: var(--blue); color: #fff; padding: 0 4px; border-radius: 3px;
 /* Grid results (Search Results, Explore, Watchlist, Discover) */
 .grid-results {
   margin-top: 40px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 30px;
+  padding: 0 5%;
+  width: 100%;
+}
+
+/* Ensure poster cards inside grid results expand to fill the grid cell perfectly */
+.grid-results .poster-card {
+  width: 100%;
+  flex: none;
   padding: 0;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .grid-results {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid-results {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
   }
 }
 
