@@ -57,12 +57,16 @@ const Hero: React.FC = () => {
       </p>
       <div className="scroll-cue">
         SCROLL
-        <div style={{ width: '40px', height: '80px', marginTop: '-10px', opacity: 0.8, mixBlendMode: 'screen' }}>
+        <div style={{ width: '120px', height: '160px', marginTop: '10px', position: 'relative', zIndex: -1 }}>
           <ToonFireball 
             background="transparent" 
-            baseColor="#510e05" 
-            accentColor="#b59c18" 
-            interaction={false} 
+            baseColor="#ff4500" 
+            accentColor="#ffb347" 
+            speed={120}
+            distance={5}
+            interaction={false}
+            bloom={{ strength: 400, radius: 45 }}
+            fire={{ core: "#fffacd", trail: "#ff4500", steam: "#333" }}
           />
         </div>
       </div>
