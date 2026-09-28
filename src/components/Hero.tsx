@@ -55,27 +55,17 @@ const Hero: React.FC = () => {
       <p className="hero-tag">
         <Typewriter text="Endless searching kills the magic of movies. Trust our curation—tell us your mood, and we will handpick the exact cinematic masterpiece you are meant to experience tonight." />
       </p>
-      <div className="scroll-cue">
+      <div className="scroll-cue" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         SCROLL
         <div style={{ 
-          width: '160px', 
-          height: '160px', 
-          marginTop: '10px', 
+          width: '300px', 
+          height: '300px', 
+          marginTop: '-40px', 
           position: 'relative', 
           zIndex: -1,
-          mixBlendMode: 'screen',
-          transform: 'rotate(90deg)'
+          mixBlendMode: 'screen'
         }}>
-          <ToonFireball 
-            background="transparent" 
-            baseColor="#ff4500" 
-            accentColor="#ffb347" 
-            speed={120}
-            distance={5}
-            interaction={false}
-            bloom={{ strength: 400, radius: 45 }}
-            fire={{ core: "#fffacd", trail: "#ff4500", steam: "#333" }}
-          />
+          <ToonFireball interaction={false} />
         </div>
       </div>
     </section>
