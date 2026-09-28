@@ -24,6 +24,8 @@ const Typewriter: React.FC<{ text: string; delay?: number }> = ({ text, delay = 
   );
 };
 
+import ToonFireball from './ToonFireball';
+
 const Hero: React.FC = () => {
   const heroRef = useRef<HTMLElement>(null);
   const rafId = useRef<number | null>(null);
@@ -53,7 +55,17 @@ const Hero: React.FC = () => {
       <p className="hero-tag">
         <Typewriter text="Endless searching kills the magic of movies. Trust our curation—tell us your mood, and we will handpick the exact cinematic masterpiece you are meant to experience tonight." />
       </p>
-      <div className="scroll-cue">SCROLL</div>
+      <div className="scroll-cue">
+        SCROLL
+        <div style={{ width: '40px', height: '80px', marginTop: '-10px', opacity: 0.8, mixBlendMode: 'screen' }}>
+          <ToonFireball 
+            background="transparent" 
+            baseColor="#510e05" 
+            accentColor="#b59c18" 
+            interaction={false} 
+          />
+        </div>
+      </div>
     </section>
   );
 };

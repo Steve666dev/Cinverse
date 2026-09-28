@@ -170,10 +170,7 @@ mark { background: var(--blue); color: #fff; padding: 0 4px; border-radius: 3px;
 }
 @keyframes bob { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(8px); } }
 .scroll-cue::after {
-  content: '';
-  width: 1px;
-  height: 34px;
-  background: linear-gradient(rgba(255,255,255,0.5), transparent);
+  display: none;
 }
 
 /* Reveal animation */
