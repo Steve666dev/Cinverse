@@ -58,9 +58,9 @@ const Hero: React.FC = () => {
       <div className="scroll-cue" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         SCROLL
         <div style={{ 
-          width: '300px', 
-          height: '300px', 
-          marginTop: '-40px', 
+          width: '450px', 
+          height: '450px', 
+          marginTop: '-80px', 
           position: 'relative', 
           zIndex: -1,
           transform: 'rotate(45deg)'

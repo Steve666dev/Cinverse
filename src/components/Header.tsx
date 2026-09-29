@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 import { Dock, DockItem, DockIcon, DockLabel } from './core/dock';
@@ -115,10 +115,10 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
   const logoRef = useRef<HTMLSpanElement>(null);
   const scrambleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const shapes = ['●', '■', '▲', '◆', '★', '▼', '◉'];
-  const SHAPE_FONT_SIZE = '1.3rem'; // Tuned to perfectly match Bebas Neue visual cap-height
-  
-  const triggerTargetedGlitch = (charEl: HTMLElement) => {
+  const triggerTargetedGlitch = useCallback((charEl: HTMLElement) => {
+    const shapes = ['●', '■', '▲', '◆', '★', '▼', '◉'];
+    const SHAPE_FONT_SIZE = '1.3rem'; // Tuned to perfectly match Bebas Neue visual cap-height
+    
     if (gsap.isTweening(charEl)) return;
 
     const originalText = charEl.getAttribute('data-char');
@@ -166,7 +166,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
         });
       }
     });
-  };
+  }, []);
 
   // --- Automatic Logo Glitch Effect ---
   useEffect(() => {
@@ -206,7 +206,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
         clearTimeout(scrambleIntervalRef.current as number);
       }
     };
-  }, []);
+  }, [triggerTargetedGlitch]);
 
   // Smart Header: Hide on scroll down, show on scroll up
   useGSAP(() => {

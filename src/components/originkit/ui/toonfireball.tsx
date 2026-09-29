@@ -40,7 +40,7 @@ const TEX_WATER =
     `)
 
 const REF_EYE = [
-    3.4369982203815655, 3.5239085092722098, 2.994862383531814,
+    3.436998220381565, 3.52390850927221, 2.994862383531814,
 ] as const
 const REF_DIST = Math.hypot(REF_EYE[0], REF_EYE[1], REF_EYE[2])
 const DEFAULT_DISTANCE = 6
@@ -645,16 +645,18 @@ export default function ToonFireball(props: ToonFireballProps) {
         interactionEnabled: interaction,
         dragSensitivity: dragSensitivity / 50,
     })
-    live.current.color0 = parseColor(f.core)
-    live.current.color1 = parseColor(baseColor)
-    live.current.color2 = parseColor(accentColor)
-    live.current.color4 = parseColor(f.steam)
-    live.current.color5 = parseColor(f.trail)
-    live.current.speed = speed
-    live.current.strength = b.strength / 100
-    live.current.radius = b.radius / 100
-    live.current.interactionEnabled = interaction
-    live.current.dragSensitivity = dragSensitivity / 50
+    useEffect(() => {
+        live.current.color0 = parseColor(f.core)
+        live.current.color1 = parseColor(baseColor)
+        live.current.color2 = parseColor(accentColor)
+        live.current.color4 = parseColor(f.steam)
+        live.current.color5 = parseColor(f.trail)
+        live.current.speed = speed
+        live.current.strength = b.strength / 100
+        live.current.radius = b.radius / 100
+        live.current.interactionEnabled = interaction
+        live.current.dragSensitivity = dragSensitivity / 50
+    }, [f.core, baseColor, accentColor, f.steam, f.trail, speed, b.strength, b.radius, interaction, dragSensitivity])
 
     const orbit = useRef({
         theta: Math.atan2(REF_EYE[0], REF_EYE[2]),
