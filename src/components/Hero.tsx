@@ -24,7 +24,6 @@ const Typewriter: React.FC<{ text: string; delay?: number }> = ({ text, delay = 
   );
 };
 
-import ToonFireball from './originkit/ui/toonfireball';
 
 const Hero: React.FC = () => {
   const heroRef = useRef<HTMLElement>(null);
@@ -55,18 +54,8 @@ const Hero: React.FC = () => {
       <p className="hero-tag">
         <Typewriter text="Endless searching kills the magic of movies. Trust our curation—tell us your mood, and we will handpick the exact cinematic masterpiece you are meant to experience tonight." />
       </p>
-      <div className="scroll-cue" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div className="scroll-cue">
         SCROLL
-        <div style={{ 
-          width: '650px', 
-          height: '650px', 
-          marginTop: '-150px', 
-          position: 'relative', 
-          zIndex: -1,
-          transform: 'rotate(45deg)'
-        }}>
-          <ToonFireball interaction={false} distance={11} background="transparent" />
-        </div>
       </div>
     </section>
   );
