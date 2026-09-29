@@ -58,14 +58,14 @@ const Hero: React.FC = () => {
       <div className="scroll-cue" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         SCROLL
         <div style={{ 
-          width: '450px', 
-          height: '450px', 
-          marginTop: '-80px', 
+          width: '650px', 
+          height: '650px', 
+          marginTop: '-150px', 
           position: 'relative', 
           zIndex: -1,
           transform: 'rotate(45deg)'
         }}>
-          <ToonFireball interaction={false} />
+          <ToonFireball interaction={false} distance={11} />
         </div>
       </div>
     </section>
