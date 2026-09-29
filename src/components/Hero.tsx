@@ -65,7 +65,7 @@ const Hero: React.FC = () => {
           zIndex: -1,
           transform: 'rotate(45deg)'
         }}>
-          <ToonFireball interaction={false} distance={11} />
+          <ToonFireball interaction={false} distance={11} background="transparent" />
         </div>
       </div>
     </section>

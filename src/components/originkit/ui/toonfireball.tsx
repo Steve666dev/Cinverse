@@ -926,7 +926,7 @@ export default function ToonFireball(props: ToonFireballProps) {
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, rtScene.fb)
             gl.viewport(0, 0, vw, vh)
-            gl.clearColor(0, 0, 0, 1)
+            gl.clearColor(0, 0, 0, 0)
             gl.enable(gl.DEPTH_TEST)
             gl.depthMask(true)
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
