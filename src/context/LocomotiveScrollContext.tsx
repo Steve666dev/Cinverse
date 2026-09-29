@@ -12,16 +12,15 @@ const LocoScrollContext = createContext<LocoScrollContextValue>({
   scrollTo: () => {},
 });
 
+if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+  window.history.scrollRestoration = 'manual';
+}
+
 export function LocomotiveScrollProvider({ children }: { children: React.ReactNode }) {
   const [locoScroll, setLocoScroll] = useState<LocomotiveScroll | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Prevent native browser scroll restoration which conflicts with Lenis
-    if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual';
-    }
-    window.scrollTo(0, 0);
 
     // Small delay so the DOM is fully painted before LS measures heights
     const timer = setTimeout(() => {
