@@ -4,8 +4,8 @@ import * as React from "react"
 import { useEffect, useRef } from "react"
 
 const TEX_PERLIN =
-    "data:image/svg+xml;base64," +
-    btoa(`
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(`
         <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
             <filter id="n">
                 <feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="4" seed="11"/>
@@ -16,8 +16,8 @@ const TEX_PERLIN =
     `)
 
 const TEX_SPARK =
-    "data:image/svg+xml;base64," +
-    btoa(`
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(`
         <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
             <filter id="n">
                 <feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="2" seed="23"/>
@@ -28,8 +28,8 @@ const TEX_SPARK =
     `)
 
 const TEX_WATER =
-    "data:image/svg+xml;base64," +
-    btoa(`
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(`
         <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
             <filter id="n">
                 <feTurbulence type="fractalNoise" baseFrequency=".025 .07" numOctaves="3" seed="37"/>
