@@ -555,7 +555,7 @@ function compile(gl: WebGLRenderingContext, type: number, src: string) {
     const sh = gl.createShader(type)!
     gl.shaderSource(sh, src)
     gl.compileShader(sh)
-    if (process.env.NODE_ENV !== "production" && !gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
         console.error("[ToonFireball] shader compile error:", gl.getShaderInfoLog(sh))
     }
     return sh
