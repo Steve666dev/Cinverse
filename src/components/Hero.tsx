@@ -63,7 +63,7 @@ const Hero: React.FC = () => {
           marginTop: '-40px', 
           position: 'relative', 
           zIndex: -1,
-          transform: 'rotate(-45deg)'
+          transform: 'rotate(45deg)'
         }}>
           <ToonFireball interaction={false} />
         </div>
