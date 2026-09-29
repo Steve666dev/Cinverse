@@ -8,7 +8,7 @@ import { TextShimmerWave } from '@/components/core/text-shimmer-wave';
 import { gsap } from 'gsap';
 import { Flip } from 'gsap/Flip';
 import './MovieModal.css';
-
+import { recordTaste } from '../utils/tasteTracker';
 gsap.registerPlugin(Flip);
 
 interface MovieModalProps {
@@ -63,6 +63,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
   
   const handleOpenTrailer = (e?: React.MouseEvent | React.KeyboardEvent) => {
     if (e) e.stopPropagation();
+    if (movie) recordTaste(movie);
     if (movie?.isAdult) {
       setShowAgeGate(true);
     } else {

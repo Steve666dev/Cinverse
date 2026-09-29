@@ -6,7 +6,7 @@ import Footer from './components/Footer';
 import MovieCard from './components/MovieCard';
 import MovieModal from './components/MovieModal';
 import ActorModal from './components/ActorModal';
-import { fetchMoviesFromAPI, fetchIndiaTrendingMovies, fetchTrendingMovies, fetchScifiMovies, fetchRomanceDramaMovies, fetchByGenreAndLanguage } from './data/api';
+import { fetchMoviesFromAPI, fetchIndiaTrendingMovies, fetchTrendingMovies, fetchScifiMovies, fetchRomanceDramaMovies, fetchByGenreAndLanguage, fetchForYouMovies } from './data/api';
 import { useWatchlist } from './context/WatchlistContext';
 import { useRef } from 'react';
 import { useInView } from 'framer-motion';
@@ -14,6 +14,7 @@ import { GlowEffectButton } from './components/GlowEffectButton';
 import IntroLoader from './components/IntroLoader';
 import type { Movie, CastMember } from './types';
 import { LocomotiveScrollProvider, useLocomotiveScroll } from './context/LocomotiveScrollContext';
+import { getTopTastes, recordTaste } from './utils/tasteTracker';
 
 function AppInner() {
   const { locoScroll } = useLocomotiveScroll();
@@ -22,6 +23,7 @@ function AppInner() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  const [forYouMovies, setForYouMovies] = useState<Movie[]>([]);
   const [indiaTrendingMovies, setIndiaTrendingMovies] = useState<Movie[]>([]);
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
   const [scifiMovies, setScifiMovies] = useState<Movie[]>([]);
@@ -39,6 +41,27 @@ function AppInner() {
   const { watchlist } = useWatchlist();
   const watchlistRef = useRef(null);
   const isWatchlistIntersecting = useInView(watchlistRef, { once: true, amount: 0.15 });
+
+  const loadForYou = useCallback(async () => {
+    const topTastes = getTopTastes();
+    if (topTastes.length > 0) {
+      try {
+        const movies = await fetchForYouMovies(topTastes);
+        setForYouMovies(movies);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    // Load initial "For You"
+    loadForYou();
+
+    // Listen for updates
+    window.addEventListener('taste_updated', loadForYou);
+    return () => window.removeEventListener('taste_updated', loadForYou);
+  }, [loadForYou]);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -154,6 +177,7 @@ function AppInner() {
   // Stop/start LS when a modal is open so page doesn't scroll behind it
   const handleOpenModal = useCallback((movie: Movie) => {
     setSelectedMovie(movie);
+    recordTaste(movie);
     locoScroll?.stop();
   }, [locoScroll]);
 
@@ -217,6 +241,16 @@ function AppInner() {
               </div>
             )}
           </section>
+        )}
+
+        {forYouMovies.length > 0 && (
+          <MovieReel
+            id="foryou"
+            title="For You"
+            description="Personalized recommendations based on what you've been watching and searching."
+            movies={forYouMovies}
+            onOpenModal={(_id, movie) => handleOpenModal(movie)}
+          />
         )}
 
         <MovieReel

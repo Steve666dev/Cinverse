@@ -37,6 +37,7 @@ export interface Movie {
   t: string;       // Title
   y: number;       // Year
   g: string;       // Genre
+  genre_ids?: number[];
   r: number;       // Rating
   runtime: number;
   dir: string;     // Director

@@ -390,6 +390,7 @@ const parseTMDb = (data: any, index: number): Movie | null => {
   if (!data || !data.title) return null;
 
   // Genre: full details endpoint has data.genres[], search results have data.genre_ids[]
+  const genre_ids = data.genres ? data.genres.map((g: any) => g.id) : (data.genre_ids || []);
   const genre = data.genres?.[0]?.name
     || (data.genre_ids?.[0] ? tmdbGenreName(data.genre_ids[0]) : 'Drama');
 
@@ -412,7 +413,7 @@ const parseTMDb = (data: any, index: number): Movie | null => {
 
   return {
     id: data.id || Date.now() + index,
-    t: data.title, y: year, g: genre, r: rating,
+    t: data.title, y: year, g: genre, genre_ids, r: rating,
     runtime: data.runtime || 0,
     dir: director,
     cast,
@@ -871,3 +872,48 @@ export const fetchTopRatedMovies = async (page = 1): Promise<Movie[]> => {
   }
 };
 
+// ─── For You: personalized recommendations based on top genres ──────────
+export const fetchForYouMovies = async (genreIds: number[], page = 1): Promise<Movie[]> => {
+  if (!TMDB_ENABLED || genreIds.length === 0) return [];
+
+  // Use pipe '|' for OR logical operator in TMDB API
+  const genresStr = genreIds.join('|');
+  
+  const params = new URLSearchParams({
+    api_key: TMDB_KEY,
+    sort_by: 'popularity.desc',
+    include_adult: 'false',
+    page: String(page),
+    with_genres: genresStr,
+    'vote_count.gte': '50', // Ensure some level of quality/popularity
+  });
+
+  const cacheKey = `foryou_${genresStr}_p${page}`;
+  if (sessionCache.has(cacheKey)) {
+    const cached = sessionCache.get(cacheKey);
+    return Array.isArray(cached) ? cached as unknown as Movie[] : [];
+  }
+
+  try {
+    const res = await fetch(`${TMDB_URL}/discover/movie?${params}`);
+    if (!res.ok) throw new Error(`TMDB for you ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data.results) || data.results.length === 0) return [];
+
+    // Fetch full detail+videos for each result in parallel
+    const ids: number[] = data.results.slice(0, 15).map((m: any) => m.id);
+    const settled = await Promise.allSettled(
+      ids.map((id, i) => fetchTMDBMovieById(id, i))
+    );
+    const finalResults = settled
+      .filter((r): r is PromiseFulfilledResult<Movie> =>
+        r.status === 'fulfilled' && r.value !== null)
+      .map(r => r.value);
+      
+    sessionCache.set(cacheKey, finalResults as any);
+    return finalResults;
+  } catch (e) {
+    console.warn('For You fetch failed:', e);
+    return [];
+  }
+};
