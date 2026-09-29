@@ -14,7 +14,7 @@ import { GlowEffectButton } from './components/GlowEffectButton';
 import IntroLoader from './components/IntroLoader';
 import type { Movie, CastMember } from './types';
 import { LocomotiveScrollProvider, useLocomotiveScroll } from './context/LocomotiveScrollContext';
-import { getTopTastes, recordTaste } from './utils/tasteTracker';
+import { getTopTastes, getTopActors, recordTaste, recordActor } from './utils/tasteTracker';
 
 function AppInner() {
   const { locoScroll } = useLocomotiveScroll();
@@ -44,9 +44,10 @@ function AppInner() {
 
   const loadForYou = useCallback(async () => {
     const topTastes = getTopTastes();
-    if (topTastes.length > 0) {
+    const topActors = getTopActors();
+    if (topTastes.length > 0 || topActors.length > 0) {
       try {
-        const movies = await fetchForYouMovies(topTastes);
+        const movies = await fetchForYouMovies(topTastes, topActors);
         setForYouMovies(movies);
       } catch (e) {
         console.error(e);
@@ -188,6 +189,7 @@ function AppInner() {
 
   const handleOpenActor = useCallback((actor: CastMember) => {
     setSelectedActor(actor);
+    recordActor(actor);
     locoScroll?.stop();
   }, [locoScroll]);
 

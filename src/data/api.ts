@@ -872,36 +872,67 @@ export const fetchTopRatedMovies = async (page = 1): Promise<Movie[]> => {
   }
 };
 
-// ─── For You: personalized recommendations based on top genres ──────────
-export const fetchForYouMovies = async (genreIds: number[], page = 1): Promise<Movie[]> => {
-  if (!TMDB_ENABLED || genreIds.length === 0) return [];
+// ─── For You: personalized recommendations based on top genres & actors ──────────
+export const fetchForYouMovies = async (genreIds: number[], actorIds: number[], page = 1): Promise<Movie[]> => {
+  if (!TMDB_ENABLED || (genreIds.length === 0 && actorIds.length === 0)) return [];
 
-  // Use pipe '|' for OR logical operator in TMDB API
-  const genresStr = genreIds.join('|');
-  
-  const params = new URLSearchParams({
-    api_key: TMDB_KEY,
-    sort_by: 'popularity.desc',
-    include_adult: 'false',
-    page: String(page),
-    with_genres: genresStr,
-    'vote_count.gte': '50', // Ensure some level of quality/popularity
-  });
+  const fetches = [];
 
-  const cacheKey = `foryou_${genresStr}_p${page}`;
+  // 1. Fetch by top genres
+  if (genreIds.length > 0) {
+    const genresStr = genreIds.join('|');
+    const params = new URLSearchParams({
+      api_key: TMDB_KEY,
+      sort_by: 'popularity.desc',
+      include_adult: 'false',
+      page: String(page),
+      with_genres: genresStr,
+      'vote_count.gte': '50',
+    });
+    fetches.push(fetch(`${TMDB_URL}/discover/movie?${params}`).then(r => r.json()));
+  }
+
+  // 2. Fetch by top actors
+  if (actorIds.length > 0) {
+    const castStr = actorIds.join('|');
+    const params = new URLSearchParams({
+      api_key: TMDB_KEY,
+      sort_by: 'popularity.desc',
+      include_adult: 'false',
+      page: String(page),
+      with_cast: castStr,
+    });
+    fetches.push(fetch(`${TMDB_URL}/discover/movie?${params}`).then(r => r.json()));
+  }
+
+  const cacheKey = `foryou_${genreIds.join('|')}_${actorIds.join('|')}_p${page}`;
   if (sessionCache.has(cacheKey)) {
     const cached = sessionCache.get(cacheKey);
     return Array.isArray(cached) ? cached as unknown as Movie[] : [];
   }
 
   try {
-    const res = await fetch(`${TMDB_URL}/discover/movie?${params}`);
-    if (!res.ok) throw new Error(`TMDB for you ${res.status}`);
-    const data = await res.json();
-    if (!Array.isArray(data.results) || data.results.length === 0) return [];
+    const responses = await Promise.all(fetches);
+    let allResults: any[] = [];
+    
+    responses.forEach(data => {
+      if (Array.isArray(data.results)) {
+        allResults = [...allResults, ...data.results];
+      }
+    });
 
-    // Fetch full detail+videos for each result in parallel
-    const ids: number[] = data.results.slice(0, 15).map((m: any) => m.id);
+    if (allResults.length === 0) return [];
+
+    // Deduplicate by ID
+    const uniqueMap = new Map();
+    allResults.forEach(r => uniqueMap.set(r.id, r));
+    const uniqueResults = Array.from(uniqueMap.values());
+    
+    // Sort by popularity just to be safe
+    uniqueResults.sort((a, b) => b.popularity - a.popularity);
+
+    // Fetch full detail+videos for top results in parallel
+    const ids: number[] = uniqueResults.slice(0, 20).map((m: any) => m.id);
     const settled = await Promise.allSettled(
       ids.map((id, i) => fetchTMDBMovieById(id, i))
     );
@@ -909,6 +940,12 @@ export const fetchForYouMovies = async (genreIds: number[], page = 1): Promise<M
       .filter((r): r is PromiseFulfilledResult<Movie> =>
         r.status === 'fulfilled' && r.value !== null)
       .map(r => r.value);
+      
+    // Shuffle the final array to mix genre/actor recommendations organically
+    for (let i = finalResults.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [finalResults[i], finalResults[j]] = [finalResults[j], finalResults[i]];
+    }
       
     sessionCache.set(cacheKey, finalResults as any);
     return finalResults;
