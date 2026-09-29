@@ -24,7 +24,7 @@ const Typewriter: React.FC<{ text: string; delay?: number }> = ({ text, delay = 
   );
 };
 
-import ToonFireball from './ToonFireball';
+import ToonFireball from './originkit/ui/toonfireball';
 
 const Hero: React.FC = () => {
   const heroRef = useRef<HTMLElement>(null);
@@ -62,7 +62,8 @@ const Hero: React.FC = () => {
           height: '300px', 
           marginTop: '-40px', 
           position: 'relative', 
-          zIndex: -1
+          zIndex: -1,
+          transform: 'rotate(-45deg)'
         }}>
           <ToonFireball interaction={false} />
         </div>

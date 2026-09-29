@@ -555,7 +555,7 @@ function compile(gl: WebGLRenderingContext, type: number, src: string) {
     const sh = gl.createShader(type)!
     gl.shaderSource(sh, src)
     gl.compileShader(sh)
-    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+    if (process.env.NODE_ENV !== "production" && !gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
         console.error("[ToonFireball] shader compile error:", gl.getShaderInfoLog(sh))
     }
     return sh
@@ -614,7 +614,7 @@ const BLOOM_DEFAULTS = { strength: 350, radius: 39 }
 
 export default function ToonFireball(props: ToonFireballProps) {
     const {
-        background = "transparent",
+        background = "#000000",
         baseColor = "#510e05",
         accentColor = "#b59c18",
         speed = 100,
@@ -934,7 +934,7 @@ export default function ToonFireball(props: ToonFireballProps) {
             gl.frontFace(gl.CCW)
 
             gl.useProgram(pBall)
-            compose(model, 0, -1 * SCENE_SCALE, 0, 0, 0.78 * SCENE_SCALE, 0.78 * SCENE_SCALE, 0.78 * SCENE_SCALE)
+            compose(model, 1 * SCENE_SCALE, 0, 0, 0, 0.78 * SCENE_SCALE, 0.78 * SCENE_SCALE, 0.78 * SCENE_SCALE)
             multiply(mv, view, model)
             gl.uniformMatrix4fv(uBall.projectionMatrix, false, proj)
             gl.uniformMatrix4fv(uBall.modelViewMatrix, false, mv)
@@ -959,7 +959,6 @@ export default function ToonFireball(props: ToonFireballProps) {
             const coneZ = (x: number) => view[2] * x + view[14]
             const flameX = (1 - 4.78) * SCENE_SCALE
             const steamX = (1 - 4.05) * SCENE_SCALE
-            
             const drawFlame = () => {
                 gl.useProgram(pFlame)
                 compose(model, flameX, 0, 0, -Math.PI / 2, 2 * SCENE_SCALE, 2 * SCENE_SCALE, 2 * SCENE_SCALE)
