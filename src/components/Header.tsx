@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 import { Dock, DockItem, DockIcon, DockLabel } from './core/dock';
@@ -112,101 +112,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
   const handleWatchlistClick = () => document.getElementById('watchlist')?.scrollIntoView({ behavior: 'smooth' });
 
   const headerRef = useRef<HTMLElement>(null);
-  const logoRef = useRef<HTMLSpanElement>(null);
-  const scrambleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const triggerTargetedGlitch = useCallback((charEl: HTMLElement) => {
-    const shapes = ['●', '■', '▲', '◆', '★', '▼', '◉'];
-    const SHAPE_FONT_SIZE = '1.3rem'; // Tuned to perfectly match Bebas Neue visual cap-height
-    
-    if (gsap.isTweening(charEl)) return;
-
-    const originalText = charEl.getAttribute('data-char');
-
-    gsap.to(charEl, {
-      duration: 0.2,
-      scale: 0,
-      rotationX: 180,
-      ease: "power2.in",
-      onComplete: () => {
-        const shape = shapes[Math.floor(Math.random() * shapes.length)];
-        const color = `hsl(${Math.random() * 360}, 90%, 65%)`;
-        
-        // Wrap the shape in a span that squishes its width by 40% (scaleX 0.6) 
-        // to perfectly match the highly condensed "Bebas Neue" aspect ratio.
-        charEl.innerHTML = `<span style="display: inline-block; font-size: ${SHAPE_FONT_SIZE}; transform: scaleX(0.6) scaleY(1.05); color: ${color}; line-height: 1;">${shape}</span>`;
-        
-        gsap.to(charEl, {
-          duration: 0.25,
-          scale: 1,
-          rotationX: 360,
-          ease: "power2.out",
-          onComplete: () => {
-            setTimeout(() => {
-              if (gsap.isTweening(charEl)) return;
-              
-              gsap.to(charEl, {
-                duration: 0.2,
-                scale: 0,
-                rotationX: 540,
-                ease: "power2.in",
-                onComplete: () => {
-                  charEl.innerText = originalText || '';
-                  
-                  gsap.to(charEl, {
-                    duration: 0.25,
-                    scale: 1,
-                    rotationX: 720,
-                    ease: "power2.out"
-                  });
-                }
-              });
-            }, 800 + Math.random() * 800);
-          }
-        });
-      }
-    });
-  }, []);
-
-  // --- Automatic Logo Glitch Effect ---
-  useEffect(() => {
-    if (!logoRef.current) return;
-
-    const runPattern = () => {
-      const chars = Array.from(logoRef.current!.querySelectorAll('.logo-char')) as HTMLElement[];
-      if (chars.length < 8) return;
-
-      const startIdx = Math.floor(Math.random() * 5);
-      const targetIndices = [startIdx, startIdx + 2, startIdx + 4];
-
-      targetIndices.forEach((index, i) => {
-        setTimeout(() => {
-          if (chars[index]) triggerTargetedGlitch(chars[index]);
-        }, i * 150);
-      });
-    };
-
-    // Initial delay so the logo doesn't immediately glitch on page load
-    const initialTimeout = setTimeout(() => {
-      runPattern();
-    }, 2000);
-
-    const runRandomly = () => {
-      scrambleIntervalRef.current = setTimeout(() => {
-        runPattern();
-        runRandomly();
-      }, 3000 + Math.random() * 4000);
-    };
-
-    runRandomly();
-
-    return () => {
-      clearTimeout(initialTimeout);
-      if (scrambleIntervalRef.current) {
-        clearTimeout(scrambleIntervalRef.current as number);
-      }
-    };
-  }, [triggerTargetedGlitch]);
 
   // Smart Header: Hide on scroll down, show on scroll up
   useGSAP(() => {
@@ -306,37 +212,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
     <>
       <header ref={headerRef}>
         <button className="logo" onClick={handleLogoClick}>
-          <span className="logo-text" ref={logoRef} style={{ display: 'inline-flex', alignItems: 'center' }}>
-            {"CINEVERSE".split('').map((char, i) => (
-              <span
-                key={i}
-                style={{
-                  position: 'relative',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {/* Invisible placeholder — locks the slot width/height to the letter */}
-                <span aria-hidden="true" style={{ opacity: 0, userSelect: 'none', pointerEvents: 'none' }}>{char}</span>
-                {/* Animated character — absolutely centered in the slot */}
-                <span
-                  className="logo-char"
-                  data-char={char}
-                  style={{
-                    position: 'absolute',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    lineHeight: 1,
-                  }}
-                >
-                  {char}
-                </span>
-              </span>
-            ))}
-          </span>
+          <span className="logo-text">CINEVERSE</span>
         </button>
       <nav className="links">
         <button
