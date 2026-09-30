@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
+import { motion } from 'framer-motion';
+import type { Variants } from 'framer-motion';
 
 export type TextShimmerWaveProps = {
   children: string;
@@ -25,37 +27,65 @@ export function TextShimmerWave({
   style,
 }: TextShimmerWaveProps) {
   const chars = useMemo(() => children.split(''), [children]);
+  
+  const MotionComponent = motion(Component as React.ElementType);
+
+  const charVariants: Variants = {
+    initial: {
+      color: 'var(--base-color, #ffffff)',
+      rotateY: 0,
+      scale: 1,
+      z: 0,
+    },
+    animate: (i: number) => ({
+      color: [
+        'var(--base-color, #ffffff)',
+        'var(--base-gradient-color, #5EB1EF)',
+        'var(--base-color, #ffffff)',
+      ],
+      rotateY: [0, rotateYDistance, 0],
+      scale: [1, scaleDistance, 1],
+      z: [0, zDistance, 0],
+      transition: {
+        duration: duration,
+        repeat: Infinity,
+        ease: 'easeInOut',
+        delay: i * (duration / chars.length) * spread,
+      },
+    }),
+  };
 
   return (
-    <Component
+    <MotionComponent
       className={`text-shimmer-wave-root ${className}`}
       style={{
-        display: 'flex',
+        display: 'inline-flex',
         flexWrap: 'nowrap',
+        perspective: '800px',
+        transformStyle: 'preserve-3d',
         ...style,
       } as CSSProperties}
       aria-label={children}
     >
       {chars.map((char, i) => (
-        <span
+        <motion.span
           key={i}
-          className="text-shimmer-wave-char"
+          custom={i}
+          variants={charVariants}
+          initial="initial"
+          animate="animate"
           aria-hidden="true"
-          style={
-            {
-              '--z-distance': `${zDistance}px`,
-              '--scale-distance': scaleDistance,
-              '--rotate-y-distance': `${rotateYDistance}deg`,
-              animationDuration: `${duration * spread}s`,
-              animationDelay: `${i * ((duration * spread) / chars.length) * 0.6}s`,
-              display: 'inline-block',
-              whiteSpace: 'pre',
-            } as CSSProperties
-          }
+          className="text-shimmer-wave-char"
+          style={{
+            display: 'inline-block',
+            transformStyle: 'preserve-3d',
+            whiteSpace: char === ' ' ? 'pre' : 'normal',
+          }}
         >
           {char}
-        </span>
+        </motion.span>
       ))}
-    </Component>
+    </MotionComponent>
   );
 }
+
