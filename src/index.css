@@ -254,3 +254,14 @@ mark { background: var(--blue); color: #fff; padding: 0 4px; border-radius: 3px;
   }
   .reveal { opacity: 1 !important; transform: none !important; }
 }
+
+@keyframes shimmer-wave {
+  0%, 100% {
+    transform: translateZ(0) scale(1) rotateY(0);
+    color: var(--base-color, #ffffff);
+  }
+  50% {
+    transform: translateZ(var(--z-distance, 0)) scale(var(--scale-distance, 1)) rotateY(var(--rotate-y-distance, 0));
+    color: var(--base-gradient-color, #a8a8a8);
+  }
+}
