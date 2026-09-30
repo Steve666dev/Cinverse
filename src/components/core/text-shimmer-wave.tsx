@@ -43,13 +43,11 @@ export function TextShimmerWave({
           aria-hidden="true"
           style={
             {
-              '--index': i,
-              '--total': chars.length,
-              '--duration': `${duration}s`,
-              '--spread': spread,
               '--z-distance': `${zDistance}px`,
               '--scale-distance': scaleDistance,
               '--rotate-y-distance': `${rotateYDistance}deg`,
+              animationDuration: `${duration * spread}s`,
+              animationDelay: `${i * ((duration * spread) / chars.length) * 0.6}s`,
               display: 'inline-block',
               whiteSpace: 'pre',
             } as CSSProperties

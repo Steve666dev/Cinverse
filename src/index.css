@@ -232,16 +232,15 @@ mark { background: var(--blue); color: #fff; padding: 0 4px; border-radius: 3px;
   perspective: 800px;
   display: inline-flex;
   flex-wrap: nowrap;
+  transform-style: preserve-3d;
 }
 
 .text-shimmer-wave-char {
   display: inline-block;
   will-change: transform, color;
-  animation: shimmer-wave
-    calc(var(--duration, 1s) * var(--spread, 1))
-    ease-in-out
-    calc(var(--index) * (var(--duration, 1s) * var(--spread, 1) / var(--total)) * 0.6)
-    infinite;
+  animation-name: shimmer-wave;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
 }
 
 /* Respect user accessibility settings */
