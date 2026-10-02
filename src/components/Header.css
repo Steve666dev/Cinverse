@@ -143,9 +143,15 @@ header.scrolled {
 
 /* Nav links */
 nav.links {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  gap: 28px;
+  gap: 12px;
   align-items: center;
+  z-index: 1000;
+  pointer-events: auto;
 }
 nav.links a {
   font-family: var(--font-mono);

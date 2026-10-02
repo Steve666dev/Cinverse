@@ -215,36 +215,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
         <button className="logo" onClick={handleLogoClick}>
           <CineverseDoodleLogo />
         </button>
-      <nav className="links">
-        <button
-          className="nav-search-btn"
-          onClick={() => { setIsOpen(true); setActiveTab('search'); }}
-          aria-label="Search"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Search
-        </button>
-        <button
-          className="nav-filter-btn"
-          onClick={() => { setIsOpen(true); setActiveTab('genre'); }}
-          aria-label="Genre"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
-          Genre
-        </button>
-        <button
-          className="nav-filter-btn"
-          onClick={() => { setIsOpen(true); setActiveTab('language'); }}
-          aria-label="Language"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          Language
-        </button>
-        <button className="nav-watchlist" onClick={handleWatchlistClick}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          Watchlist <span className="watch-count">{watchlist.size}</span>
-        </button>
-      </nav>
+
 
       {/* Unified Popup — always in DOM, toggled via .open class for smooth transitions */}
       {createPortal(
@@ -365,6 +336,38 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
         document.body
       )}
     </header>
+
+    {/* Floating Bottom Nav */}
+    <nav className="links">
+      <button
+        className="nav-search-btn"
+        onClick={() => { setIsOpen(true); setActiveTab('search'); }}
+        aria-label="Search"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search
+      </button>
+      <button
+        className="nav-filter-btn"
+        onClick={() => { setIsOpen(true); setActiveTab('genre'); }}
+        aria-label="Genre"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
+        Genre
+      </button>
+      <button
+        className="nav-filter-btn"
+        onClick={() => { setIsOpen(true); setActiveTab('language'); }}
+        aria-label="Language"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Language
+      </button>
+      <button className="nav-watchlist" onClick={handleWatchlistClick}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        Watchlist <span className="watch-count">{watchlist.size}</span>
+      </button>
+    </nav>
     </>
   );
 };
