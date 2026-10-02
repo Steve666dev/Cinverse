@@ -73,7 +73,6 @@ export function CineverseDoodleLogo() {
       {/* Trailing Animation Layers */}
       {layers.map((color, i) => {
         const index = i + 1;
-        const scale = 1 - 0.05 * index;
         return (
           <div
             key={i}
@@ -90,7 +89,9 @@ export function CineverseDoodleLogo() {
               letterSpacing: '.15em',
               lineHeight: 0,
               WebkitTextStroke: '1px #0a0a0a',
-              transform: `scale(${scale}) rotate(calc(var(--mx) * ${1.2 * index}deg)) translate(calc(var(--mx) * ${-2 * index}px), calc(var(--my) * ${3 * index}px))`,
+              // Removed scale() which was causing the text to shrink and visually glitch out of alignment.
+              // Also gave it a static base translation so it has 3D depth by default, plus mouse tracking.
+              transform: `translate(calc(${1.5 * index}px + var(--mx) * ${-3 * index}px), calc(${1.5 * index}px + var(--my) * ${3 * index}px))`,
               willChange: 'transform'
             }}
           >
