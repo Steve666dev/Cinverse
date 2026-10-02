@@ -14,7 +14,6 @@
     "@types/three": "^0.185.4",
     "clsx": "^2.1.1",
     "crypto-js": "^4.2.0",
-    "css-doodle": "^0.54.0",
     "framer-motion": "^13.1.1",
     "gsap": "^3.15.0",
     "locomotive-scroll": "^5.0.1",
