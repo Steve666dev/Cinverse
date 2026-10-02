@@ -201,26 +201,50 @@ nav.links a:hover::after { width: 100%; }
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
-/* MacOS Dock Magnification Effect */
+/* MacOS Dock Magnification Effect - Hardware Accelerated */
 .dock-item {
-  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1), filter 0.25s ease;
   transform-origin: bottom center;
+  will-change: transform;
 }
 
 .dock-item:hover {
-  transform: scale(1.6) translateY(-8px);
-  margin: 0 16px;
-  filter: drop-shadow(0 8px 16px rgba(255,255,255,0.3));
+  transform: scale(1.5) translateY(-10px);
+  filter: drop-shadow(0 8px 16px rgba(255,255,255,0.2));
+  z-index: 10;
 }
 
 .dock-item:has(+ .dock-item:hover) {
-  transform: scale(1.2) translateY(-4px);
-  margin: 0 8px;
+  transform: scale(1.2) translateY(-5px);
 }
 
 .dock-item:hover + .dock-item {
-  transform: scale(1.2) translateY(-4px);
-  margin: 0 8px;
+  transform: scale(1.2) translateY(-5px);
+}
+
+/* Tooltip Styles */
+.dock-tooltip {
+  position: absolute;
+  top: -40px;
+  background: rgba(20, 20, 20, 0.85);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px) scale(0.8);
+  transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.dock-item:hover .dock-tooltip {
+  opacity: 1;
+  transform: translateY(0) scale(1) scale(0.66); /* compensate for parent scale(1.5) */
 }
 
 .search-icon { font-size: 0.9rem; }
