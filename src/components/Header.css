@@ -201,25 +201,17 @@ nav.links a:hover::after { width: 100%; }
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
-/* MacOS Dock Magnification Effect - Hardware Accelerated */
+/* MacOS Dock Magnification Effect - Hardware Accelerated & Glitch-Free */
 .dock-item {
-  transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1), filter 0.25s ease;
+  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), filter 0.2s ease;
   transform-origin: bottom center;
   will-change: transform;
 }
 
 .dock-item:hover {
-  transform: scale(1.5) translateY(-10px);
+  transform: scale(1.45) translateY(-8px);
   filter: drop-shadow(0 8px 16px rgba(255,255,255,0.2));
   z-index: 10;
-}
-
-.dock-item:has(+ .dock-item:hover) {
-  transform: scale(1.2) translateY(-5px);
-}
-
-.dock-item:hover + .dock-item {
-  transform: scale(1.2) translateY(-5px);
 }
 
 /* Tooltip Styles */
