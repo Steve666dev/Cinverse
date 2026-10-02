@@ -72,7 +72,8 @@ export function CineverseDoodleLogo() {
               fontSize: '2.4rem',
               letterSpacing: '.15em',
               lineHeight: 0,
-              WebkitTextStroke: '5px #0a0a0a', // Thick stroke hides overlaps!
+              // Top layer gets no stroke so the text is visible. Underlying layers get thick stroke to build the 3D block.
+              WebkitTextStroke: i === 0 ? '0px' : '3px #0a0a0a',
               // transition delays create the smooth trailing effect
               transition: `transform 0.1s ease-out ${i * 0.03}s`,
               transform: `scale(${scale}) rotate(calc(var(--mx) * ${-2.5 * intensity}deg)) translateY(calc(var(--my) * ${-8 * intensity}px))`,
