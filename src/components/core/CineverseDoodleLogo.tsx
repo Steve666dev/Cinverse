@@ -2,28 +2,39 @@ import React, { useEffect, useRef } from 'react';
 
 export function CineverseDoodleLogo() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const layersRef = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     let rafId: number;
     let targetX = 0;
     let targetY = 0;
-    let currentX = 0;
-    let currentY = 0;
+    
+    // Store current physics state for each of the 5 layers
+    const currentX = [0, 0, 0, 0, 0];
+    const currentY = [0, 0, 0, 0, 0];
 
     const handleMouseMove = (e: MouseEvent) => {
-      // Normalize to -1 to 1 range
+      // Normalize to -1 to +1
       targetX = (e.clientX / window.innerWidth - 0.5) * 2;
       targetY = (e.clientY / window.innerHeight - 0.5) * 2;
     };
 
     const updatePosition = () => {
-      // Very fast interpolation, letting CSS handle the staggered delays
-      currentX += (targetX - currentX) * 0.3;
-      currentY += (targetY - currentY) * 0.3;
+      for (let i = 0; i < 5; i++) {
+        // Top layer is fast (0.15), bottom layers are slower, creating a perfect trail
+        const stiffness = 0.15 - (i * 0.025);
+        currentX[i] += (targetX - currentX[i]) * stiffness;
+        currentY[i] += (targetY - currentY[i]) * stiffness;
 
-      if (containerRef.current) {
-        containerRef.current.style.setProperty('--mx', currentX.toString());
-        containerRef.current.style.setProperty('--my', currentY.toString());
+        const el = layersRef.current[i];
+        if (el) {
+          const scale = 1 - 0.05 * i;
+          // Rotate horizontally, translate vertically, amplified by layer depth
+          const rot = currentX[i] * -4 * i; 
+          const transY = currentY[i] * -12 * i;
+          
+          el.style.transform = `scale(${scale}) rotate(${rot}deg) translateY(${transY}px)`;
+        }
       }
       rafId = requestAnimationFrame(updatePosition);
     };
@@ -46,20 +57,15 @@ export function CineverseDoodleLogo() {
         position: 'relative', 
         width: '320px', 
         height: '80px', 
-        cursor: 'pointer',
-        '--mx': '0',
-        '--my': '0'
+        cursor: 'pointer'
       } as React.CSSProperties}
     >
       {/* Animation Layers */}
       {layers.map((color, i) => {
-        const scale = 1 - 0.05 * i;
-        // Invert the index so the bottom layers react more strongly (like the doodle's @dx(-2) behavior)
-        const intensity = i; 
-        
         return (
           <div
             key={i}
+            ref={(el) => { layersRef.current[i] = el; }}
             style={{
               position: 'absolute',
               inset: 0,
@@ -72,11 +78,7 @@ export function CineverseDoodleLogo() {
               fontSize: '2.4rem',
               letterSpacing: '.15em',
               lineHeight: 0,
-              // Top layer gets no stroke so the text is visible. Underlying layers get thick stroke to build the 3D block.
-              WebkitTextStroke: i === 0 ? '0px' : '3px #0a0a0a',
-              // transition delays create the smooth trailing effect
-              transition: `transform 0.1s ease-out ${i * 0.03}s`,
-              transform: `scale(${scale}) rotate(calc(var(--mx) * ${-2.5 * intensity}deg)) translateY(calc(var(--my) * ${-8 * intensity}px))`,
+              WebkitTextStroke: i === 0 ? '0px' : '4px #0a0a0a', // Thick stroke hides overlaps!
               willChange: 'transform'
             }}
           >
