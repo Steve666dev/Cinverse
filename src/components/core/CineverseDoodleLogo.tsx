@@ -11,22 +11,28 @@ export function CineverseDoodleLogo() {
       const targetX = (e.clientX / window.innerWidth - 0.5) * 2;
       const targetY = (e.clientY / window.innerHeight - 0.5) * 2;
 
-      // Animate all layers dynamically with GSAP
-      gsap.to(layersRef.current, {
-        // Evaluate destination dynamically based on the layer's index (i)
-        x: (i) => targetX * -8 * i,
-        y: (i) => targetY * -15 * i,
-        rotation: (i) => targetX * -3 * i,
-        duration: 0.6,
-        ease: 'power2.out',
-        overwrite: 'auto'
+      // Animate each layer individually for advanced trailing
+      layersRef.current.forEach((layer, i) => {
+        if (!layer) return;
+        
+        gsap.to(layer, {
+          x: targetX * -10 * i, // Increased spread
+          y: targetY * -15 * i,
+          rotationX: targetY * -15, // True 3D tilt
+          rotationY: targetX * 15,  // True 3D tilt
+          rotationZ: targetX * -2 * i,
+          // Progressively longer durations create an organic, slinky-like trail
+          duration: 0.4 + (i * 0.15), 
+          ease: 'power3.out',
+          overwrite: 'auto'
+        });
       });
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     
     // Initial centering animation
-    gsap.set(layersRef.current, { x: 0, y: 0, rotation: 0 });
+    gsap.set(layersRef.current, { x: 0, y: 0, rotationX: 0, rotationY: 0, rotationZ: 0 });
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
@@ -43,13 +49,15 @@ export function CineverseDoodleLogo() {
         position: 'relative', 
         width: '320px', 
         height: '80px', 
-        cursor: 'pointer'
+        cursor: 'pointer',
+        perspective: '800px', // Crucial for true 3D rotation!
+        transformStyle: 'preserve-3d'
       } as React.CSSProperties}
     >
       {/* Animation Layers */}
       {layers.map((color, i) => {
-        // Pre-calculate static scaling
-        const scale = 1 - 0.05 * i;
+        // Pre-calculate static scaling to create 3D depth
+        const scale = 1 - 0.04 * i;
         
         return (
           <div
@@ -64,13 +72,14 @@ export function CineverseDoodleLogo() {
               color: color,
               zIndex: 10 - i,
               fontWeight: '900',
-              fontSize: '2.8rem', // slightly larger to look bold
+              fontSize: '2.8rem',
               letterSpacing: '.15em',
               lineHeight: 0,
-              // Thin stroke to hide overlap gaps but preserve letter fill
-              WebkitTextStroke: i === 0 ? '0px' : '2px #0a0a0a', 
-              transform: `scale(${scale})`, // GSAP handles x/y/rotation on top of this
-              willChange: 'transform'
+              WebkitTextStroke: i === 0 ? '0px' : '2.5px #0a0a0a', 
+              transform: `scale(${scale})`, // GSAP applies x/y/rotations on top
+              willChange: 'transform',
+              // Add a heavy shadow to the very bottom layer to ground the 3D extrusion
+              filter: i === layers.length - 1 ? 'drop-shadow(0px 20px 20px rgba(0,0,0,0.6))' : 'none'
             }}
           >
             CINEVERSE
