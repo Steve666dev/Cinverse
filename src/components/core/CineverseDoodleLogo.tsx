@@ -1,50 +1,36 @@
 import React, { useEffect, useRef } from 'react';
+import gsap from 'gsap';
 
 export function CineverseDoodleLogo() {
   const containerRef = useRef<HTMLDivElement>(null);
   const layersRef = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    let rafId: number;
-    let targetX = 0;
-    let targetY = 0;
-    
-    // Store current physics state for each of the 5 layers
-    const currentX = [0, 0, 0, 0, 0];
-    const currentY = [0, 0, 0, 0, 0];
-
     const handleMouseMove = (e: MouseEvent) => {
       // Normalize to -1 to +1
-      targetX = (e.clientX / window.innerWidth - 0.5) * 2;
-      targetY = (e.clientY / window.innerHeight - 0.5) * 2;
-    };
+      const targetX = (e.clientX / window.innerWidth - 0.5) * 2;
+      const targetY = (e.clientY / window.innerHeight - 0.5) * 2;
 
-    const updatePosition = () => {
-      for (let i = 0; i < 5; i++) {
-        // Top layer is fast (0.15), bottom layers are slower, creating a perfect trail
-        const stiffness = 0.15 - (i * 0.025);
-        currentX[i] += (targetX - currentX[i]) * stiffness;
-        currentY[i] += (targetY - currentY[i]) * stiffness;
-
-        const el = layersRef.current[i];
-        if (el) {
-          const scale = 1 - 0.05 * i;
-          // Rotate horizontally, translate vertically, amplified by layer depth
-          const rot = currentX[i] * -4 * i; 
-          const transY = currentY[i] * -12 * i;
-          
-          el.style.transform = `scale(${scale}) rotate(${rot}deg) translateY(${transY}px)`;
-        }
-      }
-      rafId = requestAnimationFrame(updatePosition);
+      // Animate all layers dynamically with GSAP
+      gsap.to(layersRef.current, {
+        // Evaluate destination dynamically based on the layer's index (i)
+        x: (i) => targetX * -8 * i,
+        y: (i) => targetY * -15 * i,
+        rotation: (i) => targetX * -3 * i,
+        duration: 0.6,
+        ease: 'power2.out',
+        overwrite: 'auto'
+      });
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    rafId = requestAnimationFrame(updatePosition);
+    
+    // Initial centering animation
+    gsap.set(layersRef.current, { x: 0, y: 0, rotation: 0 });
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      cancelAnimationFrame(rafId);
+      gsap.killTweensOf(layersRef.current);
     };
   }, []);
 
@@ -62,6 +48,9 @@ export function CineverseDoodleLogo() {
     >
       {/* Animation Layers */}
       {layers.map((color, i) => {
+        // Pre-calculate static scaling
+        const scale = 1 - 0.05 * i;
+        
         return (
           <div
             key={i}
@@ -73,12 +62,14 @@ export function CineverseDoodleLogo() {
               alignItems: 'center',
               justifyContent: 'center',
               color: color,
-              zIndex: 10 - i, // Top layer is highest z-index
-              fontWeight: '900', // extra bold
-              fontSize: '2.4rem',
+              zIndex: 10 - i,
+              fontWeight: '900',
+              fontSize: '2.8rem', // slightly larger to look bold
               letterSpacing: '.15em',
               lineHeight: 0,
-              WebkitTextStroke: i === 0 ? '0px' : '4px #0a0a0a', // Thick stroke hides overlaps!
+              // Thin stroke to hide overlap gaps but preserve letter fill
+              WebkitTextStroke: i === 0 ? '0px' : '2px #0a0a0a', 
+              transform: `scale(${scale})`, // GSAP handles x/y/rotation on top of this
               willChange: 'transform'
             }}
           >
