@@ -356,7 +356,6 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
           alt="Genre" 
           width="24" 
           height="24" 
-          style={{ filter: 'brightness(0) invert(1)' }} 
         />
       </button>
       <button
