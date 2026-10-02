@@ -49,16 +49,19 @@
 }
 
 .intro-title {
-  font-size: 2rem;
+  font-size: clamp(3rem, 10vw, 8rem); /* Cinematic, fully fluid typography */
   color: var(--blue-bright);
   font-family: 'Bebas Neue', sans-serif;
-  letter-spacing: .1em;
-  text-shadow: 0 0 20px rgba(96,165,250,0.5);
+  letter-spacing: .15em;
+  text-shadow: 0 0 30px rgba(96,165,250,0.6);
+  line-height: 1;
+  text-align: center;
 }
 
 .intro-progress {
   font-family: 'JetBrains Mono', monospace;
   color: var(--muted);
   letter-spacing: .2em;
-  font-size: .72rem;
+  font-size: clamp(0.75rem, 2vw, 1rem); /* Make it legible across devices */
+  text-align: center;
 }
