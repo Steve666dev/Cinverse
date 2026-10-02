@@ -11,14 +11,15 @@ export function CineverseDoodleLogo() {
     let currentY = 0;
 
     const handleMouseMove = (e: MouseEvent) => {
-      targetX = (e.clientX / window.innerWidth - 0.5) * 2; // -1 to 1
-      targetY = (e.clientY / window.innerHeight - 0.5) * 2; // -1 to 1
+      // Normalize to -1 to 1 range
+      targetX = (e.clientX / window.innerWidth - 0.5) * 2;
+      targetY = (e.clientY / window.innerHeight - 0.5) * 2;
     };
 
     const updatePosition = () => {
-      // Smooth interpolation (lerp)
-      currentX += (targetX - currentX) * 0.1;
-      currentY += (targetY - currentY) * 0.1;
+      // Very fast interpolation, letting CSS handle the staggered delays
+      currentX += (targetX - currentX) * 0.3;
+      currentY += (targetY - currentY) * 0.3;
 
       if (containerRef.current) {
         containerRef.current.style.setProperty('--mx', currentX.toString());
@@ -50,29 +51,12 @@ export function CineverseDoodleLogo() {
         '--my': '0'
       } as React.CSSProperties}
     >
-      {/* Base Text Layer */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff8ec',
-          zIndex: 1,
-          fontWeight: 'bold',
-          fontSize: '2.4rem',
-          letterSpacing: '.15em',
-          lineHeight: 0,
-          transform: 'scale(1)',
-        }}
-      >
-        CINEVERSE
-      </div>
-
-      {/* Trailing Animation Layers */}
+      {/* Animation Layers */}
       {layers.map((color, i) => {
-        const index = i + 1;
+        const scale = 1 - 0.05 * i;
+        // Invert the index so the bottom layers react more strongly (like the doodle's @dx(-2) behavior)
+        const intensity = i; 
+        
         return (
           <div
             key={i}
@@ -83,15 +67,15 @@ export function CineverseDoodleLogo() {
               alignItems: 'center',
               justifyContent: 'center',
               color: color,
-              zIndex: -index,
-              fontWeight: 'bold',
+              zIndex: 10 - i, // Top layer is highest z-index
+              fontWeight: '900', // extra bold
               fontSize: '2.4rem',
               letterSpacing: '.15em',
               lineHeight: 0,
-              WebkitTextStroke: '1px #0a0a0a',
-              // Removed scale() which was causing the text to shrink and visually glitch out of alignment.
-              // Also gave it a static base translation so it has 3D depth by default, plus mouse tracking.
-              transform: `translate(calc(${1.5 * index}px + var(--mx) * ${-3 * index}px), calc(${1.5 * index}px + var(--my) * ${3 * index}px))`,
+              WebkitTextStroke: '5px #0a0a0a', // Thick stroke hides overlaps!
+              // transition delays create the smooth trailing effect
+              transition: `transform 0.1s ease-out ${i * 0.03}s`,
+              transform: `scale(${scale}) rotate(calc(var(--mx) * ${-2.5 * intensity}deg)) translateY(calc(var(--my) * ${-8 * intensity}px))`,
               willChange: 'transform'
             }}
           >
