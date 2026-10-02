@@ -5,7 +5,7 @@ header {
   z-index: 500;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 14px 5%;
   background: transparent;
   transition: all .4s cubic-bezier(0.16, 1, 0.3, 1);

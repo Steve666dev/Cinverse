@@ -43,8 +43,8 @@ export function CineverseDoodleLogo() {
       ref={containerRef}
       style={{ 
         position: 'relative', 
-        width: '240px', 
-        height: '40px', 
+        width: '320px', 
+        height: '80px', 
         cursor: 'pointer',
         '--mx': '0',
         '--my': '0'
@@ -61,8 +61,8 @@ export function CineverseDoodleLogo() {
           color: '#fff8ec',
           zIndex: 1,
           fontWeight: 'bold',
-          fontSize: '1.8rem',
-          letterSpacing: '.18em',
+          fontSize: '2.4rem',
+          letterSpacing: '.15em',
           lineHeight: 0,
           transform: 'scale(1)',
         }}
@@ -86,11 +86,11 @@ export function CineverseDoodleLogo() {
               color: color,
               zIndex: -index,
               fontWeight: 'bold',
-              fontSize: '1.8rem',
-              letterSpacing: '.18em',
+              fontSize: '2.4rem',
+              letterSpacing: '.15em',
               lineHeight: 0,
               WebkitTextStroke: '1px #0a0a0a',
-              transform: `scale(${scale}) rotate(calc(var(--mx) * ${4 * index}deg)) translate(0, calc(var(--my) * ${2 * index}vh))`,
+              transform: `scale(${scale}) rotate(calc(var(--mx) * ${1.2 * index}deg)) translate(calc(var(--mx) * ${-2 * index}px), calc(var(--my) * ${3 * index}px))`,
               willChange: 'transform'
             }}
           >
