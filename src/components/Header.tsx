@@ -351,9 +351,13 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
         onClick={() => { setIsOpen(true); setActiveTab('genre'); }}
         aria-label="Genre"
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2 10s3-3 3-8"/><path d="M22 10s-3-3-3-8"/><path d="M10 2c0 4.4-3.6 8-8 8"/><path d="M14 2c0 4.4 3.6 8 8 8"/><path d="M2 10v12h20V10"/><path d="M6 14v4"/><path d="M18 14v4"/><path d="M10 18v-4h4v4"/>
-        </svg>
+        <img 
+          src="/icons/genre.png" 
+          alt="Genre" 
+          width="24" 
+          height="24" 
+          style={{ filter: 'invert(1) brightness(2)' }} 
+        />
       </button>
       <button
         className="nav-filter-btn"
