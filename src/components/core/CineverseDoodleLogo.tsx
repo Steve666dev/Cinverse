@@ -30,10 +30,13 @@ export function CineverseDoodleLogo() {
   }, []);
 
   const handleMouseEnter = () => {
+    const gradientColors = ['#feb944', '#fe6842', '#df5584', '#5a5ca8'];
+    
     // Hover Animation: A fluid wave effect across the letters
     gsap.to(lettersRef.current, {
       y: -8,
-      color: '#ff4b4b', // Cineverse brand red
+      // Assign a different color from the gradient to each letter
+      color: (i) => gradientColors[i % gradientColors.length],
       duration: 0.25,
       stagger: {
         each: 0.03,
