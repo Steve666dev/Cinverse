@@ -58,14 +58,15 @@ export function CineverseDoodleLogo() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        height: '80px',
+        height: 'auto', // Allow it to flex
+        padding: '10px 0',
         cursor: 'pointer',
-        perspective: '400px' // For the initial 3D flip-in
+        perspective: '400px' 
       }}
     >
       <div style={{
         fontWeight: '900',
-        fontSize: '2.4rem',
+        fontSize: 'clamp(1.8rem, 5vw, 2.4rem)', // Fluid typography for all devices!
         letterSpacing: '.15em',
         color: '#fff8ec',
         display: 'flex',
