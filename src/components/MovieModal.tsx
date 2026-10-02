@@ -146,7 +146,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
             mode='flow'
             blur='medium'
           />
-          <div id="modalCard" data-locomotive-scroll-stop onClick={e => e.stopPropagation()}>
+          <div id="modalCard" data-lenis-prevent="true" data-locomotive-scroll-stop onClick={e => e.stopPropagation()}>
             <div
             id="modalPoster"
             className={`motif-${movie.motif}`}
@@ -242,7 +242,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
               />
             </div>
 
-            <div className="modal-content custom-scrollbar" data-locomotive-scroll-stop ref={contentRef}>
+            <div className="modal-content custom-scrollbar" data-lenis-prevent="true" data-locomotive-scroll-stop ref={contentRef}>
               {activeTab === 'overview' && (
                 <div className="tab-pane overview-pane">
                   <div id="modalMeta">

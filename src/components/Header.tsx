@@ -250,11 +250,13 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
       {createPortal(
         <div
           className={`header-search-overlay${isOpen ? ' open' : ''}`}
+          data-lenis-prevent="true"
           data-locomotive-scroll-stop
           onClick={() => setIsOpen(false)}
         >
           <div
             className="header-search-container"
+            data-lenis-prevent="true"
             data-locomotive-scroll-stop
             onClick={e => e.stopPropagation()}
           >

@@ -56,8 +56,8 @@ const ActorModal: React.FC<ActorModalProps> = ({ actor, onClose, onSelectMovie }
   if (!actor) return null;
 
   return createPortal(
-    <div id="actorBackdrop" data-locomotive-scroll-stop onClick={onClose}>
-      <div id="actorCard" data-locomotive-scroll-stop onClick={(e) => e.stopPropagation()}>
+    <div id="actorBackdrop" data-lenis-prevent="true" data-locomotive-scroll-stop onClick={onClose}>
+      <div id="actorCard" data-lenis-prevent="true" data-locomotive-scroll-stop onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="actor-header">
           <div className="actor-photo-wrapper">
@@ -118,7 +118,7 @@ const ActorModal: React.FC<ActorModalProps> = ({ actor, onClose, onSelectMovie }
         </div>
 
         {/* Filmography Body */}
-        <div className="actor-body custom-scrollbar" data-locomotive-scroll-stop ref={bodyRef}>
+        <div className="actor-body custom-scrollbar" data-lenis-prevent="true" data-locomotive-scroll-stop ref={bodyRef}>
           <div className="filmography-title-bar">
             <div className="filmography-heading">
               <span>Complete Filmography</span>
