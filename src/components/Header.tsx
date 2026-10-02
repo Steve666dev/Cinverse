@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useWatchlist } from '../context/WatchlistContext';
 import { Dock, DockItem, DockIcon, DockLabel } from './core/dock';
 import { Search, Film, Languages } from 'lucide-react';
-import { TextShimmerWave } from './core/text-shimmer-wave';
+import { CineverseDoodleLogo } from './core/CineverseDoodleLogo';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import './Header.css';
@@ -213,20 +213,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
     <>
       <header ref={headerRef}>
         <button className="logo" onClick={handleLogoClick}>
-          <TextShimmerWave
-            className="logo-text"
-            style={{
-              '--base-color': '#ffffff',
-              '--base-gradient-color': '#cccccc'
-            } as React.CSSProperties}
-            duration={1.5}
-            spread={1}
-            zDistance={2}
-            scaleDistance={1.05}
-            rotateYDistance={15}
-          >
-            CINEVERSE
-          </TextShimmerWave>
+          <CineverseDoodleLogo />
         </button>
       <nav className="links">
         <button
