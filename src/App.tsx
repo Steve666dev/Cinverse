@@ -44,8 +44,8 @@ function AppInner() {
   const [isIntroFadingOut, setIsIntroFadingOut] = useState(false);
   const heroReadyRef = useRef(false);
   const reelsReadyRef = useRef(false);
+  const introStartTimeRef = useRef(Date.now());
   const hasTriggeredFadeRef = useRef(false);
-  const introCompletedRef = useRef(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [selectedActor, setSelectedActor] = useState<CastMember | null>(null);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
@@ -97,19 +97,16 @@ function AppInner() {
 
   const checkReadiness = useCallback(() => {
     if (hasTriggeredFadeRef.current) return;
-    // Intro must complete its full majestic round first
-    if (!introCompletedRef.current) {
+    const elapsed = Date.now() - introStartTimeRef.current;
+    const MIN_INTRO_DURATION = 800; // Fast and snappy intro reveal
+    if (elapsed < MIN_INTRO_DURATION) {
+      setTimeout(checkReadiness, MIN_INTRO_DURATION - elapsed);
       return;
     }
     if (heroReadyRef.current && reelsReadyRef.current) {
       triggerReveal();
     }
   }, [triggerReveal]);
-
-  const handleIntroComplete = useCallback(() => {
-    introCompletedRef.current = true;
-    checkReadiness();
-  }, [checkReadiness]);
 
   const handleHeroReady = useCallback(() => {
     heroReadyRef.current = true;
@@ -165,12 +162,12 @@ function AppInner() {
       }
     }).catch(err => console.error('Romance error:', err));
 
-    // Safety timeout: Never keep the user waiting more than 4.5s even if network is slow
+    // Safety timeout: Never keep the user waiting more than 3.5s even if network is slow
     const safetyTimeout = setTimeout(() => {
       if (!hasTriggeredFadeRef.current) {
         triggerReveal();
       }
-    }, 4500);
+    }, 3500);
 
     return () => {
       isCancelled = true;
@@ -290,12 +287,7 @@ function AppInner() {
 
   return (
     <>
-      {isIntroMounted && (
-        <IntroLoader
-          isFadingOut={isIntroFadingOut}
-          onComplete={handleIntroComplete}
-        />
-      )}
+      {isIntroMounted && <IntroLoader isFadingOut={isIntroFadingOut} />}
       <Header
         onSearch={handleSearch}
         onDiscover={handleDiscover}
