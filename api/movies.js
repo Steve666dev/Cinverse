@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
-  const TMDB_KEY = process.env.VITE_TMDB_API_KEY || process.env.TMDB_KEY || '';
-  const OMDB_KEY = process.env.VITE_OMDB_API_KEY || process.env.OMDB_API_KEY || '';
+  const TMDB_KEY = (process.env.VITE_TMDB_API_KEY || process.env.TMDB_KEY || '').trim();
+  const OMDB_KEY = (process.env.VITE_OMDB_API_KEY || process.env.OMDB_API_KEY || '').trim();
 
   if (!TMDB_KEY) {
     return res.status(500).json({ ok: false, error: 'Missing VITE_TMDB_API_KEY' });

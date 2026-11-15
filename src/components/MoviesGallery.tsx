@@ -359,9 +359,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     };
 
     const fetchClientDirectTheatricalFilms = async (deviceToday: ReturnType<typeof getDeviceToday>): Promise<A24Film[]> => {
-      const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || TMDB_KEY;
-      if (!tmdbKey) return [];
-      const omdbKey = import.meta.env.VITE_OMDB_API_KEY || '';
+      const tmdbKey = (import.meta.env.VITE_TMDB_API_KEY || TMDB_KEY || '').trim();
+      const omdbKey = (import.meta.env.VITE_OMDB_API_KEY || '').trim();
 
       const todayYMD = { y: deviceToday.y, m: deviceToday.m, d: deviceToday.d };
       const minDate = new Date(Date.UTC(todayYMD.y, todayYMD.m - 1, todayYMD.d - 20));
