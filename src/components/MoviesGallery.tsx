@@ -12,6 +12,7 @@ import {
   computeReleaseStatus,
   isInDisplayWindow
 } from '../utils/releaseStatus';
+import { TMDB_KEY, pickCleanTrailerKey } from '../data/api';
 import { A24TrailerLightbox } from './A24TrailerLightbox';
 import { ChevronLeft, ChevronRight, Play, Info, List, ExternalLink } from 'lucide-react';
 
@@ -236,6 +237,241 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
   useEffect(() => {
     let isCancelled = false;
 
+    // Helper: safely extract numeric IMDb rating
+    const getNumericRating = (m: A24Film): number => {
+      if (m.imdbRating) {
+        const parsed = parseFloat(String(m.imdbRating).replace(/[^0-9.]/g, ''));
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+      if (typeof m.rating === 'number' && !isNaN(m.rating) && m.rating > 0) {
+        return m.rating;
+      }
+      return 0;
+    };
+
+    // Helper: safely extract numeric IMDb votes for tie-breaking
+    const getNumericVotes = (m: A24Film): number => {
+      if (m.imdbVotes) {
+        const str = String(m.imdbVotes).trim();
+        const numMatch = str.match(/([0-9.]+)\s*([kKmM])?/);
+        if (numMatch) {
+          let num = parseFloat(numMatch[1]);
+          if (numMatch[2]?.toLowerCase() === 'k') num *= 1000;
+          else if (numMatch[2]?.toLowerCase() === 'm') num *= 1000000;
+          if (!isNaN(num) && num > 0) return Math.round(num);
+        }
+        const parsed = parseInt(str.replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+      return 0;
+    };
+
+    // Helper: resolve film's authentic industry
+    const indianLangs = ['hi', 'te', 'ta', 'ml', 'kn', 'pa', 'mr', 'bn', 'gu', 'or', 'as', 'ur', 'sa', 'bho'];
+    const getFilmIndustry = (m: A24Film): string => {
+      if (m.industry && m.industry.trim() && m.industry !== 'Unknown') {
+        return m.industry.trim();
+      }
+      const lang = (m.language || '').toLowerCase().trim().slice(0, 2);
+      const langMap: Record<string, string> = {
+        hi: 'Bollywood',
+        te: 'Tollywood',
+        ta: 'Kollywood',
+        ml: 'Mollywood',
+        kn: 'Sandalwood',
+        pa: 'Pollywood',
+        mr: 'Marathi Cinema',
+        bn: 'Bengali Cinema',
+        gu: 'Gujarati Cinema',
+        en: 'Hollywood'
+      };
+      if (langMap[lang]) return langMap[lang];
+      return 'Cinema';
+    };
+
+    const isIndianFilm = (m: A24Film): boolean => {
+      const ind = getFilmIndustry(m);
+      const indianIndustries = [
+        'Bollywood', 'Tollywood', 'Kollywood', 'Mollywood', 
+        'Sandalwood', 'Pollywood', 'Marathi Cinema', 'Bengali Cinema', 'Gujarati Cinema'
+      ];
+      if (indianIndustries.includes(ind)) return true;
+      if (ind !== 'Hollywood' && ind !== 'Cinema') return true;
+      const lang = (m.language || '').toLowerCase().trim().slice(0, 2);
+      return indianLangs.includes(lang);
+    };
+
+    const getPanWorldImpactScore = (m: A24Film): number => {
+      const votes = getNumericVotes(m);
+      const rating = getNumericRating(m);
+      const pop = typeof m.popularity === 'number' ? m.popularity : 0;
+      const countries = typeof m.countriesCount === 'number' ? m.countriesCount : 1;
+      return (votes * 10) + (pop * 100) + (countries * 50) + (rating * 20);
+    };
+
+    const sortTheatricalFilms = (valid: A24Film[]): A24Film[] => {
+      return [...valid].sort((a, b) => {
+        const aForeign = !isIndianFilm(a) ? 1 : 0;
+        const bForeign = !isIndianFilm(b) ? 1 : 0;
+        if (aForeign !== bForeign) return aForeign - bForeign;
+
+        const impactA = getPanWorldImpactScore(a);
+        const impactB = getPanWorldImpactScore(b);
+        if (impactB !== impactA) return impactB - impactA;
+
+        const rA = getNumericRating(a);
+        const rB = getNumericRating(b);
+        if (rB !== rA) return rB - rA;
+
+        const vA = getNumericVotes(a);
+        const vB = getNumericVotes(b);
+        if (vB !== vA) return vB - vA;
+
+        const popA = typeof a.popularity === 'number' ? a.popularity : 0;
+        const popB = typeof b.popularity === 'number' ? b.popularity : 0;
+        if (popB !== popA) return popB - popA;
+
+        return (b.releaseDate || '').localeCompare(a.releaseDate || '');
+      });
+    };
+
+    const applyFilmList = (moviesList: A24Film[], clientToday: ReturnType<typeof getDeviceToday>): boolean => {
+      const valid = moviesList
+        .map((f: A24Film) => {
+          const film = { ...f };
+          if (!film.industry || film.industry === 'Unknown' || film.industry.trim() === '') {
+            film.industry = getFilmIndustry(film);
+          }
+          return film;
+        })
+        .filter((f: A24Film) => isInDisplayWindow(f.releaseDate, clientToday));
+
+      const sorted = sortTheatricalFilms(valid);
+      if (sorted.length > 0) {
+        setFilms(sorted);
+        setApiError(null);
+        try {
+          localStorage.setItem('cinverse_last_device_date', clientToday.iso);
+        } catch {}
+        return true;
+      }
+      return false;
+    };
+
+    const fetchClientDirectTheatricalFilms = async (deviceToday: ReturnType<typeof getDeviceToday>): Promise<A24Film[]> => {
+      const tmdbKey = import.meta.env.VITE_TMDB_API_KEY || TMDB_KEY;
+      if (!tmdbKey) return [];
+      const omdbKey = import.meta.env.VITE_OMDB_API_KEY || '';
+
+      const todayYMD = { y: deviceToday.y, m: deviceToday.m, d: deviceToday.d };
+      const minDate = new Date(Date.UTC(todayYMD.y, todayYMD.m - 1, todayYMD.d - 20));
+      const maxDate = new Date(Date.UTC(todayYMD.y, todayYMD.m - 1, todayYMD.d + 45));
+
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const fromDateStr = `${minDate.getUTCFullYear()}-${pad(minDate.getUTCMonth() + 1)}-${pad(minDate.getUTCDate())}`;
+      const toDateStr = `${maxDate.getUTCFullYear()}-${pad(maxDate.getUTCMonth() + 1)}-${pad(maxDate.getUTCDate())}`;
+
+      try {
+        const discoverUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${tmdbKey}&region=IN&with_release_type=2|3&release_date.gte=${fromDateStr}&release_date.lte=${toDateStr}&sort_by=popularity.desc&page=1`;
+        const res = await fetch(discoverUrl).catch(() => null);
+        if (!res || !res.ok) return [];
+        const data = await res.json().catch(() => null);
+        if (!data || !Array.isArray(data.results)) return [];
+
+        const candidates = data.results.filter((m: any) => m && m.id && m.title && m.poster_path).slice(0, 16);
+
+        const resolvedMovies = await Promise.all(
+          candidates.map(async (candidate: any) => {
+            try {
+              const detailUrl = `https://api.themoviedb.org/3/movie/${candidate.id}?api_key=${tmdbKey}&append_to_response=release_dates,external_ids,credits,videos`;
+              const dRes = await fetch(detailUrl).catch(() => null);
+              if (!dRes || !dRes.ok) return null;
+              const tmdbMovie = await dRes.json().catch(() => null);
+              if (!tmdbMovie) return null;
+
+              const inReleases = tmdbMovie.release_dates?.results?.find((r: any) => r.iso_3166_1 === 'IN');
+              const inTheatrical = inReleases?.release_dates?.find((r: any) => (r.type === 2 || r.type === 3) && r.release_date);
+              const rawDateISO = inTheatrical?.release_date ? inTheatrical.release_date.slice(0, 10) : (tmdbMovie.release_date || candidate.release_date || '').slice(0, 10);
+              if (!rawDateISO) return null;
+
+              const status = computeReleaseStatus(rawDateISO, deviceToday);
+              if (!status) return null;
+
+              const imdbId = tmdbMovie.external_ids?.imdb_id;
+              const videos = tmdbMovie.videos?.results || [];
+              const trailerKey = pickCleanTrailerKey(videos) || (videos.find((v: any) => v.site === 'YouTube')?.key) || '';
+
+              const director = tmdbMovie.credits?.crew?.find((c: any) => c.job === 'Director')?.name || 'Director';
+              const starring = Array.isArray(tmdbMovie.credits?.cast)
+                ? tmdbMovie.credits.cast.slice(0, 4).map((c: any) => c.name)
+                : [];
+
+              let omdbRating = tmdbMovie.vote_average ? String(tmdbMovie.vote_average.toFixed(1)) : '7.5';
+              let omdbVotes = tmdbMovie.vote_count ? String(tmdbMovie.vote_count) : undefined;
+              let runtime = tmdbMovie.runtime ? `${tmdbMovie.runtime} min` : undefined;
+              let genre = tmdbMovie.genres?.[0]?.name;
+
+              if (omdbKey && imdbId && /^tt\d{7,10}$/.test(imdbId)) {
+                try {
+                  const oRes = await fetch(`https://www.omdbapi.com/?apikey=${omdbKey}&i=${imdbId}&plot=full`).catch(() => null);
+                  if (oRes && oRes.ok) {
+                    const omdb = await oRes.json().catch(() => null);
+                    if (omdb && omdb.Response !== 'False') {
+                      if (omdb.imdbRating && omdb.imdbRating !== 'N/A') omdbRating = omdb.imdbRating;
+                      if (omdb.imdbVotes && omdb.imdbVotes !== 'N/A') omdbVotes = omdb.imdbVotes;
+                      if (omdb.Runtime && omdb.Runtime !== 'N/A') runtime = omdb.Runtime;
+                      if (omdb.Genre && omdb.Genre !== 'N/A') genre = omdb.Genre;
+                    }
+                  }
+                } catch {}
+              }
+
+              const releaseYear = parseInt(rawDateISO.slice(0, 4), 10) || new Date().getFullYear();
+              const posterUrl = `https://image.tmdb.org/t/p/w780${tmdbMovie.poster_path || candidate.poster_path}`;
+
+              const film: A24Film = {
+                id: imdbId || String(tmdbMovie.id),
+                imdbId: imdbId || undefined,
+                title: tmdbMovie.title || candidate.title,
+                year: releaseYear,
+                releaseDate: rawDateISO,
+                rawDate: rawDateISO,
+                dateSource: 'TMDB (IN Theatrical)',
+                dateCountry: 'IN',
+                dateType: inTheatrical?.type || 3,
+                fetchedAt: new Date().toISOString(),
+                status,
+                releaseStatus: status,
+                director,
+                starring,
+                language: tmdbMovie.original_language || candidate.original_language || 'hi',
+                posterUrl,
+                discArtUrl: posterUrl,
+                rating: parseFloat(omdbRating) || 7.5,
+                imdbRating: omdbRating,
+                imdbVotes: omdbVotes,
+                overview: tmdbMovie.overview || candidate.overview || '',
+                runtime,
+                genre,
+                imdbUrl: imdbId ? `https://www.imdb.com/title/${imdbId}/` : undefined,
+                trailerUrl: trailerKey ? `https://www.youtube.com/watch?v=${trailerKey}` : undefined,
+                trailerYoutubeId: trailerKey,
+                popularity: tmdbMovie.popularity || candidate.popularity || 0,
+                countriesCount: Array.isArray(tmdbMovie.release_dates?.results) ? tmdbMovie.release_dates.results.length : 1,
+              };
+              return film;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        return resolvedMovies.filter((f): f is A24Film => f !== null);
+      } catch {
+        return [];
+      }
+    };
+
     const loadDailyTheatricalFilms = () => {
       setIsApiLoading(true);
       const deviceToday = getDeviceToday();
@@ -243,154 +479,48 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
       fetch(`/api/movies?today=${deviceToday.iso}&tz=${encodeURIComponent(deviceToday.tz)}`)
         .then(async (res) => {
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-          }
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const contentType = res.headers.get('content-type') || '';
+          if (!contentType.includes('application/json')) throw new Error('Non-JSON response from server');
           return res.json();
         })
-        .then((data) => {
-          console.log('[loadDailyTheatricalFilms] Received from /api/movies:', data?.ok, data?.count);
+        .then(async (data) => {
           if (!isCancelled) {
-            if (data?.ok && Array.isArray(data.movies)) {
-              // Re-validate every movie against the client's own device date before rendering
-              const clientToday = getDeviceToday();
-              const valid = data.movies
-                .map((f: A24Film) => {
-                  const film = { ...f };
-                  if (!film.industry || film.industry === 'Unknown' || film.industry.trim() === '') {
-                    film.industry = getFilmIndustry(film);
-                  }
-                  return film;
-                })
-                .filter((f: A24Film) => isInDisplayWindow(f.releaseDate, clientToday));
-
-              // Helper: safely extract numeric IMDb rating
-              const getNumericRating = (m: A24Film): number => {
-                if (m.imdbRating) {
-                  const parsed = parseFloat(String(m.imdbRating).replace(/[^0-9.]/g, ''));
-                  if (!isNaN(parsed) && parsed > 0) return parsed;
-                }
-                if (typeof m.rating === 'number' && !isNaN(m.rating) && m.rating > 0) {
-                  return m.rating;
-                }
-                return 0;
-              };
-
-              // Helper: safely extract numeric IMDb votes for tie-breaking
-              const getNumericVotes = (m: A24Film): number => {
-                if (m.imdbVotes) {
-                  const str = String(m.imdbVotes).trim();
-                  const numMatch = str.match(/([0-9.]+)\s*([kKmM])?/);
-                  if (numMatch) {
-                    let num = parseFloat(numMatch[1]);
-                    if (numMatch[2]?.toLowerCase() === 'k') num *= 1000;
-                    else if (numMatch[2]?.toLowerCase() === 'm') num *= 1000000;
-                    if (!isNaN(num) && num > 0) return Math.round(num);
-                  }
-                  const parsed = parseInt(str.replace(/[^0-9]/g, ''), 10);
-                  if (!isNaN(parsed) && parsed > 0) return parsed;
-                }
-                return 0;
-              };
-
-              // Helper: resolve film's authentic industry
-              const indianLangs = ['hi', 'te', 'ta', 'ml', 'kn', 'pa', 'mr', 'bn', 'gu', 'or', 'as', 'ur', 'sa', 'bho'];
-              const getFilmIndustry = (m: A24Film): string => {
-                if (m.industry && m.industry.trim() && m.industry !== 'Unknown') {
-                  return m.industry.trim();
-                }
-                const lang = (m.language || '').toLowerCase().trim().slice(0, 2);
-                const langMap: Record<string, string> = {
-                  hi: 'Bollywood',
-                  te: 'Tollywood',
-                  ta: 'Kollywood',
-                  ml: 'Mollywood',
-                  kn: 'Sandalwood',
-                  pa: 'Pollywood',
-                  mr: 'Marathi Cinema',
-                  bn: 'Bengali Cinema',
-                  gu: 'Gujarati Cinema',
-                  en: 'Hollywood'
-                };
-                if (langMap[lang]) return langMap[lang];
-                return 'Cinema';
-              };
-
-              const isIndianFilm = (m: A24Film): boolean => {
-                const ind = getFilmIndustry(m);
-                const indianIndustries = [
-                  'Bollywood', 'Tollywood', 'Kollywood', 'Mollywood', 
-                  'Sandalwood', 'Pollywood', 'Marathi Cinema', 'Bengali Cinema', 'Gujarati Cinema'
-                ];
-                if (indianIndustries.includes(ind)) return true;
-                if (ind !== 'Hollywood' && ind !== 'Cinema') return true;
-                const lang = (m.language || '').toLowerCase().trim().slice(0, 2);
-                return indianLangs.includes(lang);
-              };
-
-              // Helper: compute Pan-India & Pan-World box office collection and global impact score
-              const getPanWorldImpactScore = (m: A24Film): number => {
-                const votes = getNumericVotes(m);
-                const rating = getNumericRating(m);
-                const pop = typeof m.popularity === 'number' ? m.popularity : 0;
-                const countries = typeof m.countriesCount === 'number' ? m.countriesCount : 1;
-
-                // Authentic IMDb votes directly reflect worldwide audience turnout and theatrical collections.
-                // TMDB global popularity reflects global audience interest and demand.
-                // Countries count confirms wide international foreign theatrical release footprint.
-                return (votes * 10) + (pop * 100) + (countries * 50) + (rating * 20);
-              };
-
-              // Show all recent verified movies in the release window:
-              // Indian movies shown first, with the top Pan-India & Pan-World blockbuster running successfully in India and overseas collecting more at the very first CD,
-              // followed by other Indian releases, and lastly foreign country movies
-              const sorted = [...valid].sort((a, b) => {
-                const aForeign = !isIndianFilm(a) ? 1 : 0;
-                const bForeign = !isIndianFilm(b) ? 1 : 0;
-                if (aForeign !== bForeign) return aForeign - bForeign; // Indian first, foreign last
-
-                // For Indian movies: Rank by Pan-India & Pan-World box office collection and global impact
-                const impactA = getPanWorldImpactScore(a);
-                const impactB = getPanWorldImpactScore(b);
-                if (impactB !== impactA) return impactB - impactA;
-
-                // Fallbacks: highest IMDb rating, then votes, then date
-                const rA = getNumericRating(a);
-                const rB = getNumericRating(b);
-                if (rB !== rA) return rB - rA;
-
-                const vA = getNumericVotes(a);
-                const vB = getNumericVotes(b);
-                if (vB !== vA) return vB - vA;
-
-                const popA = typeof a.popularity === 'number' ? a.popularity : 0;
-                const popB = typeof b.popularity === 'number' ? b.popularity : 0;
-                if (popB !== popA) return popB - popA;
-
-                return (b.releaseDate || '').localeCompare(a.releaseDate || '');
-              });
-
-              setFilms(sorted);
-              setApiError(null);
-              if (valid.length === 0) {
-                onHeroReadyRef.current?.();
-              }
-              try {
-                localStorage.setItem('cinverse_last_device_date', clientToday.iso);
-              } catch {}
-            } else {
+            if (data?.ok && Array.isArray(data.movies) && data.movies.length > 0) {
+              const applied = applyFilmList(data.movies, deviceToday);
+              if (applied) return;
+            }
+            // Fallback to client-side TMDB discovery if server returned empty
+            const directFilms = await fetchClientDirectTheatricalFilms(deviceToday);
+            if (!isCancelled && directFilms.length > 0) {
+              applyFilmList(directFilms, deviceToday);
+            } else if (!isCancelled) {
               setFilms([]);
               setApiError("Couldn't load verified releases");
               onHeroReadyRef.current?.();
             }
           }
         })
-        .catch((err) => {
-          console.warn('/api/movies backend fetch error:', err);
+        .catch(async (err) => {
+          console.warn('/api/movies backend unreachable, using direct TMDB discovery:', err);
           if (!isCancelled) {
-            setFilms([]);
-            setApiError("Couldn't load verified releases");
-            onHeroReadyRef.current?.();
+            try {
+              const directFilms = await fetchClientDirectTheatricalFilms(deviceToday);
+              if (!isCancelled && directFilms.length > 0) {
+                applyFilmList(directFilms, deviceToday);
+              } else if (!isCancelled) {
+                setFilms([]);
+                setApiError("Couldn't load verified releases");
+                onHeroReadyRef.current?.();
+              }
+            } catch (fallbackErr) {
+              console.error('Direct TMDB discovery failed:', fallbackErr);
+              if (!isCancelled) {
+                setFilms([]);
+                setApiError("Couldn't load verified releases");
+                onHeroReadyRef.current?.();
+              }
+            }
           }
         })
         .finally(() => {
