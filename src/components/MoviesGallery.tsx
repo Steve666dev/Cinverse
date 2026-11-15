@@ -1273,7 +1273,11 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       const total = filmsRef.current.length || 1;
       const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + scrub));
       animStateRef.current.progress = nextP;
-      setActiveIndex(Math.round(nextP));
+      const newIdx = Math.round(nextP);
+      if (newIdx !== activeIndexRef.current) {
+        activeIndexRef.current = newIdx;
+        setActiveIndex(newIdx);
+      }
     };
 
     const handlePointerUp = () => {
@@ -1418,14 +1422,22 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         const total = filmsRef.current.length || 1;
         const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + scrub));
         animStateRef.current.progress = nextP;
-        setActiveIndex(Math.round(nextP));
+        const newIdx = Math.round(nextP);
+        if (newIdx !== activeIndexRef.current) {
+          activeIndexRef.current = newIdx;
+          setActiveIndex(newIdx);
+        }
       } else if (isVerticalCdSwipe) {
         if (e.cancelable) e.preventDefault();
         const scrub = dy / (window.innerHeight * 0.45);
         const total = filmsRef.current.length || 1;
         const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + scrub));
         animStateRef.current.progress = nextP;
-        setActiveIndex(Math.round(nextP));
+        const newIdx = Math.round(nextP);
+        if (newIdx !== activeIndexRef.current) {
+          activeIndexRef.current = newIdx;
+          setActiveIndex(newIdx);
+        }
       }
     };
 

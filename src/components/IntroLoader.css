@@ -81,5 +81,5 @@
     0 0 50px rgba(96, 165, 250, 0.3),
     0 4px 12px rgba(0, 0, 0, 0.8);
   font-weight: 400;
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity;
 }
