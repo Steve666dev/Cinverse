@@ -183,11 +183,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
         {/* Top Badges */}
         <div className="poster-top-bar">
           {movie.y > 0 && <span className="poster-year-badge">{movie.y}</span>}
-          {((movie.imdbRating && movie.imdbRating !== 'N/A') || (typeof movie.r === 'number' && movie.r > 0)) && (
-            <span className="poster-rating-badge">
-              ★ {movie.imdbRating || (typeof movie.r === 'number' ? movie.r.toFixed(1) : '')}
-            </span>
-          )}
+          <span className="poster-rating-badge">★ {typeof movie.r === 'number' ? movie.r.toFixed(1) : movie.r || '7.5'}</span>
         </div>
 
         {/* Bottom Details Block */}

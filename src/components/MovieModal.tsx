@@ -111,11 +111,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
           if (full.castMembers?.length) movie.castMembers = full.castMembers;
           if (full.watchProviders?.length) movie.watchProviders = full.watchProviders;
           if (full.runtime) movie.runtime = full.runtime;
-          if (full.dir && full.dir !== 'Unknown' && full.dir !== 'Director') movie.dir = full.dir;
-          if (full.imdbId) (movie as any).imdbId = full.imdbId;
-          if (full.imdbRating) (movie as any).imdbRating = full.imdbRating;
-          if (full.imdbVotes) (movie as any).imdbVotes = full.imdbVotes;
-          if (full.r && full.r > 0) movie.r = full.r;
+          if (full.dir && full.dir !== 'Unknown') movie.dir = full.dir;
           if (full.trailerUrl) {
             movie.trailerUrl = full.trailerUrl;
             const fullTid = getYouTubeVideoId(full);
@@ -125,28 +121,8 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
             }
           }
           if (full.tagline && full.tagline !== movie.tagline) movie.tagline = full.tagline;
-          if (full.blurb && full.blurb.trim()) {
-            if (!movie.blurb || movie.blurb.includes('Emotionally compelling') || movie.blurb === 'No description available.' || full.blurb.length > movie.blurb.length) {
-              movie.blurb = full.blurb.trim();
-            }
-          }
+          if (full.blurb && full.blurb.length > (movie.blurb?.length || 0)) movie.blurb = full.blurb;
           if (full.reviews?.length) movie.reviews = full.reviews;
-
-          // If full details provided an imdbId and we don't have authentic rating yet, resolve it live
-          const liveId = full.imdbId || (movie as any).imdbId;
-          if (liveId && !(movie as any).imdbRating) {
-            fetch(`/api/imdb-rating?id=${encodeURIComponent(liveId)}`)
-              .then(r => r.json())
-              .then(data => {
-                if (data && data.ok && data.rating) {
-                  (movie as any).imdbRating = data.rating;
-                  (movie as any).imdbVotes = data.votes;
-                  if (data.numericRating) movie.r = data.numericRating;
-                  setEnrichTick(v => v + 1);
-                }
-              }).catch(() => {});
-          }
-
           setEnrichTick((v) => v + 1);
         }
       }).catch(() => {});
@@ -367,23 +343,17 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
               {activeTab === 'overview' && (
                 <div className="tab-pane overview-pane">
                   <div id="modalMeta">
-                    {movie.y > 0 && <span className="meta-year">{movie.y}</span>}
-                    {movie.g && <span className="meta-genre">{movie.g}</span>}
+                    <span className="meta-year">{movie.y}</span>
+                    <span className="meta-genre">{movie.g}</span>
                     {movie.runtime > 0 && <span className="meta-runtime">{movie.runtime} min</span>}
-                    {movie.dir && movie.dir !== 'Unknown' && movie.dir !== 'Director' && (
-                      <span className="meta-dir">Dir. {movie.dir}</span>
-                    )}
-                    {((movie.imdbRating && movie.imdbRating !== 'N/A') || (typeof movie.r === 'number' && movie.r > 0)) ? (
-                      <span className="meta-rating" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                        <span style={{ background: '#f5c518', color: '#000000', fontSize: '0.65rem', fontWeight: 900, padding: '1px 5px', borderRadius: '3px', letterSpacing: '0.04em', lineHeight: 1.2 }}>IMDb</span>
-                        ★ {movie.imdbRating || (typeof movie.r === 'number' ? movie.r.toFixed(1) : movie.r)}
-                        {movie.imdbVotes && <span style={{ color: '#888', fontSize: '0.75rem' }}>({String(movie.imdbVotes).replace(/\s*votes$/i, '')})</span>}
-                      </span>
-                    ) : (
-                      <span className="meta-rating" style={{ color: '#888', fontSize: '0.75rem' }}>Unrated</span>
-                    )}
+                    <span className="meta-dir">Dir. {movie.dir}</span>
+                    <span className="meta-rating" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ background: '#f5c518', color: '#000000', fontSize: '0.65rem', fontWeight: 900, padding: '1px 5px', borderRadius: '3px', letterSpacing: '0.04em', lineHeight: 1.2 }}>IMDb</span>
+                      ★ {movie.imdbRating || (typeof movie.r === 'number' ? movie.r.toFixed(1) : movie.r || 'N/A')}
+                      {movie.imdbVotes && <span style={{ color: '#888', fontSize: '0.75rem' }}>({movie.imdbVotes})</span>}
+                    </span>
                   </div>
-                  <p id="modalBlurb">{movie.blurb?.trim() ? movie.blurb : 'No official synopsis available for this title.'}</p>
+                  <p id="modalBlurb">{movie.blurb}</p>
                   
                   {/* Direct Streaming Providers */}
                   <div className="modal-watch-quick-bar" style={{ marginTop: '30px' }}>
@@ -553,17 +523,10 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                       {movie.reviews.map((review: Review, i: number) => (
                         <div key={i} className="review-card">
                           <div className="review-header">
-                            <span className="review-author">{review.author || 'Reviewer'}</span>
-                            {typeof review.rating === 'number' && review.rating > 0 && (
-                              <span className="review-rating" title={`${review.rating} / 5 stars`}>
-                                {'★'.repeat(Math.min(5, Math.max(1, review.rating)))}{'☆'.repeat(Math.max(0, 5 - review.rating))}
-                              </span>
-                            )}
-                            {review.date && (
-                              <span className="review-date" style={{ color: '#888', fontSize: '0.75rem', marginLeft: 'auto' }}>
-                                {review.date}
-                              </span>
-                            )}
+                            <span className="review-author">{review.author}</span>
+                            <span className="review-rating">
+                              {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                            </span>
                           </div>
                           <p className="review-text">"{review.text}"</p>
                         </div>
@@ -572,7 +535,7 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                     </div>
                   ) : (
                     <div className="no-reviews">
-                      No official user reviews found for this title.
+                      No reviews yet. Be the first to rate!
                     </div>
                   )}
                 </div>

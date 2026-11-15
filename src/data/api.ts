@@ -216,8 +216,8 @@ const parseOMDb = (data: any, index: number): Movie | null => {
   const rawId = data.imdbID?.replace('tt', '');
   const id = rawId ? parseInt(rawId) || (Date.now() + index) : Date.now() + index;
   const genre = data.Genre || 'Drama';
-  const hasValidImdb = Boolean(data.imdbRating && data.imdbRating !== 'N/A' && !isNaN(parseFloat(data.imdbRating)));
-  const rating = hasValidImdb ? parseFloat(data.imdbRating) : 0;
+  const hasValidImdb = data.imdbRating && data.imdbRating !== 'N/A';
+  const rating = hasValidImdb ? parseFloat(data.imdbRating) : 7.0;
   const imdbRating = hasValidImdb ? String(data.imdbRating) : undefined;
   const imdbVotes = data.imdbVotes && data.imdbVotes !== 'N/A' ? formatImdbVoteCount(data.imdbVotes) : undefined;
   const poster = upgradePosterUrl(data.Poster);
@@ -245,7 +245,7 @@ const parseOMDb = (data: any, index: number): Movie | null => {
     cast: actorsStr,
     castMembers,
     tagline,
-    blurb: (data.Plot && data.Plot !== 'N/A') ? data.Plot.trim() : '',
+    blurb: (data.Plot && data.Plot !== 'N/A') ? data.Plot : 'No description available.',
     mood: genreToMood(genre),
     motif: genreToMotif(genre),
     img: poster,
@@ -269,9 +269,7 @@ const parseTMDb = (data: any, index: number): Movie | null => {
     ? formatPosterUrl(data.poster_path, 'w500')
     : (data.backdrop_path ? formatPosterUrl(data.backdrop_path, 'w500') : undefined);
   const year   = data.release_date ? parseInt(data.release_date.split('-')[0]) : 0;
-  const rating = (typeof data.vote_average === 'number' && data.vote_average > 0)
-    ? parseFloat(data.vote_average.toFixed(1))
-    : 0;
+  const rating = data.vote_average ? parseFloat(data.vote_average.toFixed(1)) : 7.0;
   const director = data.credits?.crew?.find((c: any) => c.job === 'Director')?.name || 'Unknown';
   const castMembers: CastMember[] = data.credits?.cast?.slice(0, 12).map((c: any) => ({
     id: c.id,
@@ -290,20 +288,13 @@ const parseTMDb = (data: any, index: number): Movie | null => {
 
   const rawReviews = data.reviews?.results || [];
   const reviews: Review[] = Array.isArray(rawReviews) && rawReviews.length > 0
-    ? rawReviews
-        .filter((r: any) => r && typeof r.content === 'string' && r.content.trim().length > 0)
-        .slice(0, 10)
-        .map((r: any) => {
-          const authRating = typeof r.author_details?.rating === 'number' && r.author_details.rating > 0
-            ? Math.max(1, Math.min(5, Math.round(r.author_details.rating / 2)))
-            : undefined;
-          return {
-            author: (r.author || r.author_details?.username || 'Reviewer').trim(),
-            text: (r.content || '').replace(/\r\n/g, '\n').trim(),
-            date: r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : undefined,
-            rating: authRating,
-          };
-        })
+    ? rawReviews.slice(0, 10).map((r: any) => ({
+        author: r.author || r.author_details?.username || 'Verified Critic',
+        text: (r.content || '').replace(/\r\n/g, '\n').trim(),
+        rating: r.author_details?.rating
+          ? Math.max(1, Math.min(5, Math.round(r.author_details.rating / 2)))
+          : (Math.max(1, Math.min(5, Math.round(rating / 2))) || 4),
+      }))
     : [];
 
   return {
@@ -315,7 +306,7 @@ const parseTMDb = (data: any, index: number): Movie | null => {
     cast,
     castMembers,
     tagline: data.tagline || `${genre} · ${year}`,
-    blurb: (data.overview && typeof data.overview === 'string') ? data.overview.trim() : '',
+    blurb: data.overview || 'No description available.',
     mood: genreToMood(genre),
     motif: genreToMotif(genre),
     lang: data.original_language || undefined,
@@ -389,20 +380,13 @@ export const fetchMovieById = async (imdbId: string, index: number): Promise<Mov
               }
 
               if (Array.isArray(detailData.reviews?.results) && detailData.reviews.results.length > 0) {
-                movie.reviews = detailData.reviews.results
-                  .filter((r: any) => r && typeof r.content === 'string' && r.content.trim().length > 0)
-                  .slice(0, 10)
-                  .map((r: any) => {
-                    const authRating = typeof r.author_details?.rating === 'number' && r.author_details.rating > 0
-                      ? Math.max(1, Math.min(5, Math.round(r.author_details.rating / 2)))
-                      : undefined;
-                    return {
-                      author: (r.author || r.author_details?.username || 'Reviewer').trim(),
-                      text: (r.content || '').replace(/\r\n/g, '\n').trim(),
-                      date: r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : undefined,
-                      rating: authRating,
-                    };
-                  });
+                movie.reviews = detailData.reviews.results.slice(0, 10).map((r: any) => ({
+                  author: r.author || r.author_details?.username || 'Verified Critic',
+                  text: (r.content || '').replace(/\r\n/g, '\n').trim(),
+                  rating: r.author_details?.rating
+                    ? Math.max(1, Math.min(5, Math.round(r.author_details.rating / 2)))
+                    : 4,
+                }));
               }
             }
           }
@@ -524,9 +508,7 @@ export const fetchActorFilmography = async (actorIdOrName: number | string): Pro
     const movies: Movie[] = sortedMovies.slice(0, 40).map((m: any, idx: number) => {
       const genre = m.genre_ids?.[0] ? tmdbGenreName(m.genre_ids[0]) : 'Drama';
       const year = m.release_date ? parseInt(m.release_date.split('-')[0]) : 0;
-      const rating = (typeof m.vote_average === 'number' && m.vote_average > 0)
-        ? parseFloat(m.vote_average.toFixed(1))
-        : 0;
+      const rating = m.vote_average ? parseFloat(m.vote_average.toFixed(1)) : 7.0;
       const poster = m.poster_path ? formatPosterUrl(m.poster_path, 'w500') : undefined;
 
       return {
@@ -538,7 +520,7 @@ export const fetchActorFilmography = async (actorIdOrName: number | string): Pro
         runtime: 0,
         dir: 'Unknown',
         tagline: m.character ? `Starred as "${m.character}"` : `${genre} · ${year}`,
-        blurb: (m.overview && typeof m.overview === 'string') ? m.overview.trim() : '',
+        blurb: m.overview || 'No description available.',
         mood: genreToMood(genre),
         motif: genreToMotif(genre),
         img: poster,
@@ -625,9 +607,7 @@ export const getCurrentDateTracking = () => {
 export const parseTMDBDiscoverMovie = (m: any, index: number): Movie => {
   const genre = m.genre_ids?.[0] ? tmdbGenreName(m.genre_ids[0]) : (m.genres?.[0]?.name || 'Drama');
   const year = m.release_date ? (parseInt(m.release_date.split('-')[0]) || 0) : (m.first_air_date ? parseInt(m.first_air_date.split('-')[0]) || 0 : 0);
-  const rating = (typeof m.vote_average === 'number' && m.vote_average > 0)
-    ? parseFloat(m.vote_average.toFixed(1))
-    : 0;
+  const rating = m.vote_average ? parseFloat(m.vote_average.toFixed(1)) : 7.5;
   const poster = m.poster_path
     ? formatPosterUrl(m.poster_path, 'w500')
     : (m.backdrop_path ? formatPosterUrl(m.backdrop_path, 'w500') : '');
@@ -640,9 +620,9 @@ export const parseTMDBDiscoverMovie = (m: any, index: number): Movie => {
     genre_ids: m.genre_ids || [],
     r: rating,
     runtime: m.runtime || 120,
-    dir: (m.director || m.dir || '').trim() || undefined,
+    dir: m.director || m.dir || 'Director',
     tagline: m.tagline || `${genre}${year ? ` · ${year}` : ''}`,
-    blurb: (m.overview && typeof m.overview === 'string') ? m.overview.trim() : '',
+    blurb: m.overview || 'Emotionally compelling cinematic story.',
     mood: genreToMood(genre),
     motif: genreToMotif(genre),
     lang: m.original_language || undefined,

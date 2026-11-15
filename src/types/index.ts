@@ -1,8 +1,7 @@
 export interface Review {
   author: string;
-  rating?: number;
+  rating: number;
   text: string;
-  date?: string;
 }
 
 export interface CastMember {

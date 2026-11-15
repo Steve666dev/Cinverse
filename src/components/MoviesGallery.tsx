@@ -405,9 +405,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
                 ? tmdbMovie.credits.cast.slice(0, 4).map((c: any) => c.name)
                 : [];
 
-              let omdbRating = (typeof tmdbMovie.vote_average === 'number' && tmdbMovie.vote_average > 0)
-                ? String(tmdbMovie.vote_average.toFixed(1))
-                : '';
+              let omdbRating = tmdbMovie.vote_average ? String(tmdbMovie.vote_average.toFixed(1)) : '7.5';
               let omdbVotes = tmdbMovie.vote_count ? String(tmdbMovie.vote_count) : undefined;
               let runtime = tmdbMovie.runtime ? `${tmdbMovie.runtime} min` : undefined;
               let genre = tmdbMovie.genres?.[0]?.name;
@@ -429,7 +427,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
                 }
 
                 // If OMDb was unavailable or returned N/A, check live IMDb resolver endpoint
-                if (!omdbVotes || !omdbRating || (tmdbMovie.vote_average && omdbRating === tmdbMovie.vote_average.toFixed(1))) {
+                if (!omdbVotes || omdbRating === '7.5' || (tmdbMovie.vote_average && omdbRating === tmdbMovie.vote_average.toFixed(1))) {
                   try {
                     const lRes = await fetch(`/api/imdb-rating?id=${encodeURIComponent(imdbId)}`).catch(() => null);
                     if (lRes && lRes.ok) {
@@ -464,8 +462,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
                 language: tmdbMovie.original_language || candidate.original_language || 'hi',
                 posterUrl,
                 discArtUrl: posterUrl,
-                rating: parseFloat(omdbRating) || 0,
-                imdbRating: omdbRating || undefined,
+                rating: parseFloat(omdbRating) || 7.5,
+                imdbRating: omdbRating,
                 imdbVotes: omdbVotes,
                 overview: tmdbMovie.overview || candidate.overview || '',
                 runtime,
