@@ -22,6 +22,8 @@ export default async function handler(req, res) {
 
   // Look for the requested date, or fallback to the latest available daily cache
   const candidateFiles = [
+    new URL(`../data/cache/${todayStr}_${region}_TMDB.json`, import.meta.url),
+    new URL('../data/cache/2026-11-15_IN_TMDB.json', import.meta.url),
     path.join(process.cwd(), 'data', 'cache', `${todayStr}_${region}_TMDB.json`),
     path.join(process.cwd(), 'public', 'data', 'cache', `${todayStr}_${region}_TMDB.json`),
     path.join(process.cwd(), 'data', 'cache', '2026-11-15_IN_TMDB.json'),
@@ -29,16 +31,16 @@ export default async function handler(req, res) {
   ];
 
   for (const filePath of candidateFiles) {
-    if (fs.existsSync(filePath)) {
-      try {
+    try {
+      if (typeof filePath === 'object' || fs.existsSync(filePath)) {
         const raw = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(raw);
         if (data && Array.isArray(data.movies) && data.movies.length > 0) {
           return res.status(200).json(data);
         }
-      } catch (err) {
-        console.warn(`[api/movies] Error reading ${filePath}:`, err.message);
       }
+    } catch (err) {
+      // Continue to next candidate
     }
   }
 

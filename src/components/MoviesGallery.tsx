@@ -405,13 +405,26 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
                 ? tmdbMovie.credits.cast.slice(0, 4).map((c: any) => c.name)
                 : [];
 
-              let omdbRating = tmdbMovie.vote_average ? String(tmdbMovie.vote_average.toFixed(1)) : '7.5';
-              let omdbVotes = tmdbMovie.vote_count ? String(tmdbMovie.vote_count) : undefined;
+              let omdbRating: string | undefined = undefined;
+              let omdbVotes: string | undefined = undefined;
               let runtime = tmdbMovie.runtime ? `${tmdbMovie.runtime} min` : undefined;
               let genre = tmdbMovie.genres?.[0]?.name;
 
               if (imdbId && /^tt\d{7,10}$/.test(imdbId)) {
-                if (omdbKey) {
+                // 1. Direct verified static cache resolution for zero latency
+                try {
+                  const staticRes = await fetch('/data/cache/imdb_ratings_live.json').catch(() => null);
+                  if (staticRes && staticRes.ok) {
+                    const cacheMap = await staticRes.json().catch(() => null);
+                    if (cacheMap && cacheMap[imdbId]) {
+                      omdbRating = cacheMap[imdbId].rating;
+                      omdbVotes = cacheMap[imdbId].votes;
+                    }
+                  }
+                } catch {}
+
+                // 2. Query OMDb API if key provided and not resolved yet
+                if (!omdbRating && omdbKey) {
                   try {
                     const oRes = await fetch(`https://www.omdbapi.com/?apikey=${omdbKey}&i=${imdbId}&plot=full`).catch(() => null);
                     if (oRes && oRes.ok) {
@@ -426,8 +439,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
                   } catch {}
                 }
 
-                // If OMDb was unavailable or returned N/A, check live IMDb resolver endpoint
-                if (!omdbVotes || omdbRating === '7.5' || (tmdbMovie.vote_average && omdbRating === tmdbMovie.vote_average.toFixed(1))) {
+                // 3. Fallback to serverless API endpoint
+                if (!omdbRating) {
                   try {
                     const lRes = await fetch(`/api/imdb-rating?id=${encodeURIComponent(imdbId)}`).catch(() => null);
                     if (lRes && lRes.ok) {
@@ -462,7 +475,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
                 language: tmdbMovie.original_language || candidate.original_language || 'hi',
                 posterUrl,
                 discArtUrl: posterUrl,
-                rating: parseFloat(omdbRating) || 7.5,
+                rating: omdbRating ? parseFloat(omdbRating) : (tmdbMovie.vote_average ? parseFloat(tmdbMovie.vote_average.toFixed(1)) : 0),
                 imdbRating: omdbRating,
                 imdbVotes: omdbVotes,
                 overview: tmdbMovie.overview || candidate.overview || '',
@@ -644,23 +657,23 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       }));
     };
 
+    // Apply static cache immediately (instant 0ms response)
+    fetch('/data/cache/imdb_ratings_live.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(map => {
+        if (map && typeof map === 'object') applyRatings(map);
+      })
+      .catch(() => {});
+
+    // Also query live endpoint for any dynamic updates
     fetch(`/api/imdb-rating?ids=${encodeURIComponent(ids.join(','))}`)
-      .then(res => res.ok ? res.json() : Promise.reject())
+      .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data && data.ok && data.ratings) {
           applyRatings(data.ratings);
-        } else {
-          throw new Error('Static fallback');
         }
       })
-      .catch(() => {
-        fetch('/data/cache/imdb_ratings_live.json')
-          .then(r => r.ok ? r.json() : null)
-          .then(map => {
-            if (map && typeof map === 'object') applyRatings(map);
-          })
-          .catch(() => {});
-      });
+      .catch(() => {});
   }, [films.length]);
 
   // Connect existing IMDb API globally to ensure active film has live authentic score and votes
@@ -682,8 +695,6 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
             }
             return f;
           }));
-        } else {
-          throw new Error('Static fallback');
         }
       })
       .catch(() => {
@@ -696,7 +707,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
                 if (f.id === activeFilm.id || f.imdbId === targetId) {
                   return {
                     ...f,
-                    imdbRating: live.rating || f.imdbRating,
+                    imdbRating: live.rating,
                     imdbVotes: live.votes || f.imdbVotes,
                     rating: live.numericRating || f.rating
                   };
@@ -1570,8 +1581,14 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
                   <span className="a24-subheading-xs">IMDB RATING</span>
                   <p className="a24-paragraph-m" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ background: '#f5c518', color: '#000000', fontSize: '0.65rem', fontWeight: 900, padding: '2px 6px', borderRadius: '3px', letterSpacing: '0.04em' }}>IMDb</span>
-                    <span style={{ color: '#f5c518', fontWeight: 800 }}>★ {activeFilm.imdbRating || (activeFilm.rating ? String(activeFilm.rating) : 'N/A')}/10</span>
-                    <span style={{ color: '#888', fontSize: '0.75rem' }}>{activeFilm.imdbVotes ? `(${String(activeFilm.imdbVotes).replace(/\s*votes$/i, '')})` : ''}</span>
+                    {activeFilm.imdbRating && activeFilm.imdbRating !== 'N/A' ? (
+                      <>
+                        <span style={{ color: '#f5c518', fontWeight: 800 }}>★ {activeFilm.imdbRating}/10</span>
+                        {activeFilm.imdbVotes && <span style={{ color: '#888', fontSize: '0.75rem' }}>({String(activeFilm.imdbVotes).replace(/\s*votes$/i, '')})</span>}
+                      </>
+                    ) : (
+                      <span style={{ color: '#888', fontSize: '0.85rem' }}>Not Rated Yet</span>
+                    )}
                   </p>
                 </div>
 

@@ -98,7 +98,7 @@ function AppInner() {
   const checkReadiness = useCallback(() => {
     if (hasTriggeredFadeRef.current) return;
     const elapsed = Date.now() - introStartTimeRef.current;
-    const MIN_INTRO_DURATION = 2600; // Calibrated so user experiences the gentle intro animation
+    const MIN_INTRO_DURATION = 800; // Fast and snappy intro reveal
     if (elapsed < MIN_INTRO_DURATION) {
       setTimeout(checkReadiness, MIN_INTRO_DURATION - elapsed);
       return;
@@ -162,12 +162,12 @@ function AppInner() {
       }
     }).catch(err => console.error('Romance error:', err));
 
-    // Safety timeout: Never keep the user waiting more than 5.0s even if network is slow
+    // Safety timeout: Never keep the user waiting more than 3.5s even if network is slow
     const safetyTimeout = setTimeout(() => {
       if (!hasTriggeredFadeRef.current) {
         triggerReveal();
       }
-    }, 5000);
+    }, 3500);
 
     return () => {
       isCancelled = true;
@@ -307,9 +307,9 @@ function AppInner() {
                 <h2>Search Results</h2>
                 {isSearching
                   ? <p style={{ color: 'var(--blue-bright)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span className="reel-spin" style={{ width: 18, height: 18, borderWidth: 2 }}></span>
-                    Searching for "{searchQuery}"…
-                  </p>
+                      <span className="reel-spin" style={{ width: 18, height: 18, borderWidth: 2 }}></span>
+                      Searching for "{searchQuery}"…
+                    </p>
                   : <p>Found {searchResults.length} film{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}".</p>
                 }
               </div>

@@ -10,216 +10,227 @@ interface IntroLoaderProps {
 
 const LETTERS = ['C', 'I', 'N', 'E', 'V', 'E', 'R', 'S', 'E'];
 
-interface VortexParticle {
-  phase: number;        // [0, 1) normalized loop phase
-  initialAngle: number; // base angular offset
-  initialDist: number;  // maximum outer radius
-  baseScale: number;    // base scale multiplier
-  baseRotation: number; // initial tilt
-  img: HTMLImageElement;
-}
-
 const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   useGSAP(() => {
-    let isActive = true;
-
-    // 1. Crystal-clear, majestic typography reveal without GPU blur artifacts
+    // 1. Pristine, majestic cinematic title reveal animation (zero blur artifacts, crisp & lag-free)
     if (titleRef.current) {
       const chars = titleRef.current.querySelectorAll('.intro-char');
       gsap.fromTo(
         chars,
         {
           opacity: 0,
-          y: 18,
-          scale: 0.94,
+          y: 20,
+          scale: 0.92,
         },
         {
           opacity: 1,
           y: 0,
           scale: 1,
-          duration: 1.0,
-          stagger: 0.05,
+          duration: 0.9,
+          stagger: 0.04,
           ease: 'power2.out',
         }
       );
 
       gsap.to(titleRef.current, {
-        letterSpacing: '0.22em',
-        duration: 2.8,
-        ease: 'power1.out',
+        letterSpacing: '0.24em',
+        duration: 2.0,
+        ease: 'sine.out',
       });
     }
 
-    // 2. High-performance, silky smooth continuous poster vortex
+    // 2. Canvas particle constellation background
     const c = canvasRef.current;
     if (!c) return;
-    const ctx = c.getContext('2d', { alpha: true });
+    const ctx = c.getContext("2d");
     if (!ctx) return;
 
-    let cw = window.innerWidth;
-    let ch = window.innerHeight;
-    let radius = Math.max(cw, ch) * 0.72;
+    let cw = (c.width = window.innerWidth);
+    let ch = (c.height = window.innerHeight);
+    let radius = Math.max(cw, ch);
+    const particles = Array(99).fill(null);
+    let tl: gsap.core.Timeline | null = null;
+    let isActive = true;
 
-    function updateCanvasSize() {
-      if (!c) return;
-      const rect = containerRef.current?.getBoundingClientRect() || c.getBoundingClientRect();
-      cw = rect.width || window.innerWidth;
-      ch = rect.height || window.innerHeight;
-      radius = Math.max(cw, ch) * 0.72;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      c.width = Math.round(cw * dpr);
-      c.height = Math.round(ch * dpr);
-      c.style.width = `${cw}px`;
-      c.style.height = `${ch}px`;
-    }
-
-    updateCanvasSize();
-
-    const PARTICLE_COUNT = 48;
-    const particles: VortexParticle[] = [];
-
-    // Distribute particles evenly along natural logarithmic spiral arms
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      const arm = i % 4;
-      const progressOffset = i / PARTICLE_COUNT;
-      particles.push({
-        phase: progressOffset,
-        initialAngle: arm * (Math.PI / 2) + progressOffset * Math.PI * 1.5,
-        initialDist: radius * (0.55 + (arm * 0.12)),
-        baseScale: 0.65 + (i % 3) * 0.1,
-        baseRotation: (Math.random() - 0.5) * 0.4,
-        img: new Image()
-      });
-    }
-
-    // Load authentic movie posters instantly from static cache / CDN
+    // Track all posters we've ever shown so we never repeat
     const seenPosters = new Set<string>();
-    const posterUrls: string[] = [];
 
-    async function loadPosters() {
+    // TMDB API Key from environment (with fallback)
+    const API_KEY = (import.meta.env.VITE_TMDB_API_KEY || 'be6b01a4600e4ced87a42b190ea40313').trim();
+    const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w200';
+
+    // Fetches unique movies fast without endless loops
+    async function fetchUniqueMovies(count: number, _pages: number = 1) {
+      const newPosters: string[] = [];
       try {
-        const cRes = await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null);
-        if (cRes && cRes.ok) {
-          const cData = await cRes.json().catch(() => null);
-          if (Array.isArray(cData?.movies)) {
-            for (const m of cData.movies) {
-              if (m.posterUrl && !seenPosters.has(m.posterUrl)) {
-                seenPosters.add(m.posterUrl);
-                posterUrls.push(m.posterUrl);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1200);
+        const randomPage = Math.floor(Math.random() * 20) + 1;
+        const res = await fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&page=${randomPage}`, {
+          signal: controller.signal
+        }).then(r => r.json()).catch(() => ({ results: [] }));
+        clearTimeout(timeoutId);
+
+        if (Array.isArray(res?.results)) {
+          for (const movie of res.results) {
+            if (movie.poster_path) {
+              const directUrl = IMAGE_BASE_URL + movie.poster_path;
+              const posterUrl = `https://wsrv.nl/?url=${encodeURIComponent(directUrl)}&output=webp&q=70`;
+              if (!seenPosters.has(posterUrl)) {
+                seenPosters.add(posterUrl);
+                newPosters.push(posterUrl);
+                if (newPosters.length >= count) break;
               }
             }
           }
         }
-      } catch {}
+      } catch {
+        // Fallback gracefully
+      }
+      return newPosters;
+    }
 
-      // Fallback TMDB discover if needed
-      const apiKey = (import.meta.env.VITE_TMDB_API_KEY || '').trim();
-      if (posterUrls.length < 16 && apiKey) {
+    async function init() {
+      // 1. Fetch just 1 page (fast) to start the animation cleanly with real posters
+      let posters = await fetchUniqueMovies(20, 1);
+
+      // If network fails or empty, fallback to cached theatrical posters
+      if (posters.length === 0) {
         try {
-          const res = await fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=popularity.desc&page=1`)
-            .then(r => r.json()).catch(() => null);
-          if (Array.isArray(res?.results)) {
-            for (const m of res.results) {
-              if (m.poster_path) {
-                const url = `https://image.tmdb.org/t/p/w200${m.poster_path}`;
-                if (!seenPosters.has(url)) {
-                  seenPosters.add(url);
-                  posterUrls.push(url);
-                }
+          const cRes = await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null);
+          if (cRes && cRes.ok) {
+            const cData = await cRes.json().catch(() => null);
+            if (Array.isArray(cData?.movies)) {
+              for (const m of cData.movies) {
+                if (m.posterUrl) posters.push(m.posterUrl);
               }
             }
           }
         } catch {}
       }
 
-      if (!isActive || posterUrls.length === 0) return;
+      if (!isActive) return;
 
-      particles.forEach((p, idx) => {
-        p.img.src = posterUrls[idx % posterUrls.length];
+      for (let i = 0; i < particles.length; i++) {
+        particles[i] = {
+          x: 0,
+          y: 0,
+          scale: 0, 
+          rotate: 0,
+          img: new Image()
+        }  
+        // Wrap around the available posters
+        if (posters.length > 0) {
+          particles[i].img.src = posters[i % posters.length];
+        }
+      }
+      
+      if (!isActive) return;
+      startAnimation();
+      
+      // 2. Fetch the rest in the background to add variety
+      fetchUniqueMovies(particles.length, 3).then(realPosters => {
+        if (!isActive || realPosters.length === 0) return;
+        
+        for (let i = 0; i < particles.length; i++) {
+          const nextImg = new Image();
+          nextImg.onload = () => {
+            particles[i].img = nextImg;
+          };
+          nextImg.src = realPosters[i % realPosters.length];
+        }
+      });
+      
+      const intervalId = setInterval(async () => {
+        if (!isActive) {
+          clearInterval(intervalId);
+          return;
+        }
+        let newPosters = await fetchUniqueMovies(particles.length, 3);
+        
+        if (newPosters.length > 0 && isActive) {
+          for (let i = 0; i < particles.length; i++) {
+            const nextImg = new Image();
+            nextImg.onload = () => {
+              particles[i].img = nextImg;
+            };
+            nextImg.src = newPosters[i % newPosters.length];
+          }
+        }
+      }, 15000); 
+    }
+
+    function startAnimation() {
+      tl = gsap.timeline({onUpdate:draw})
+        .fromTo(particles, {
+          x:(i)=> {
+            const angle = (i/particles.length * Math.PI *2)- Math.PI/2;
+            return Math.cos(angle*10) * radius;
+          },
+          y:(i)=> {
+            const angle = (i/particles.length * Math.PI *2)- Math.PI/2;
+            return Math.sin(angle*10) * radius;
+          },
+          scale: 1.1,
+          rotate: 0
+        },{
+          duration: 5,
+          ease: "sine.inOut",
+          x: 0,
+          y: 0,
+          scale: 0,
+          rotate: -3,
+          stagger:{each:-0.05, repeat:-1}
+        }, 0)
+        .seek(99);
+    }
+
+    function draw(){  
+      particles.sort( (a,b) => a.scale - b.scale ); 
+      if (!ctx) return;
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.imageSmoothingEnabled = true; 
+
+      particles.forEach((p) => {
+        ctx.translate(cw / 2, ch / 2);
+        ctx.rotate( p.rotate );
+        
+        const w = p.img?.width ? p.img.width * p.scale : 0;
+        const h = p.img?.height ? p.img.height * p.scale : 0;
+
+        if (w && h) {
+          ctx.drawImage(
+            p.img,
+            Math.round(p.x - w/2),
+            Math.round(p.y - h/2),
+            Math.round(w),
+            Math.round(h)
+          );
+        }
+        ctx.resetTransform();
       });
     }
 
-    loadPosters();
-
-    // Dedicated requestAnimationFrame render loop with zero GC and no matrix corruption
-    let animId: number;
-    let lastTime = performance.now();
-    let time = 0;
-
-    const renderLoop = (now: number) => {
-      animId = requestAnimationFrame(renderLoop);
-      if (!ctx || !c || !isActive) return;
-
-      const dt = Math.min(32, now - lastTime) / 1000;
-      lastTime = now;
-      // Graceful, smooth vortex speed (takes ~11 seconds for a full particle cycle)
-      time += dt * 0.088;
-
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      ctx.save();
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, cw, ch);
-      ctx.imageSmoothingEnabled = true;
-
-      const centerX = cw / 2;
-      const centerY = ch / 2;
-      ctx.translate(centerX, centerY);
-
-      for (let i = 0; i < PARTICLE_COUNT; i++) {
-        const p = particles[i];
-        if (!p.img.complete || p.img.naturalWidth === 0) continue;
-
-        // Infinite loop [0, 1) without any jumping
-        const t = (p.phase + time) % 1;
-
-        // Smooth spiral glide towards center
-        const r = p.initialDist * Math.pow(1 - t, 1.25);
-        const angle = p.initialAngle + t * 4.8;
-
-        const x = Math.cos(angle) * r;
-        const y = Math.sin(angle) * r;
-        const scale = p.baseScale * (0.22 + 0.78 * Math.pow(1 - t, 0.75));
-        const rotation = p.baseRotation + t * 2.0;
-
-        // Smooth opacity envelope: fade in softly at edge, fade out smoothly into center
-        let opacity = 1;
-        if (t < 0.12) {
-          opacity = t / 0.12;
-        } else if (t > 0.82) {
-          opacity = (1 - t) / 0.18;
-        }
-
-        const w = p.img.naturalWidth * scale * 0.22;
-        const h = p.img.naturalHeight * scale * 0.22;
-        if (w <= 0 || h <= 0) continue;
-
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
-        ctx.translate(x, y);
-        ctx.rotate(rotation);
-        ctx.drawImage(p.img, -w / 2, -h / 2, w, h);
-        ctx.restore();
-      }
-
-      ctx.restore();
-    };
-
-    animId = requestAnimationFrame(renderLoop);
-
     const handleResize = () => {
-      updateCanvasSize();
+      if (!c) return;
+      cw = c.width = innerWidth;
+      ch = c.height = innerHeight;
+      radius = Math.max(cw,ch);
+      if (tl) tl.invalidate();
     };
 
-    window.addEventListener('resize', handleResize, { passive: true });
+    window.addEventListener("resize", handleResize);
+
+    init();
 
     return () => {
       isActive = false;
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
+      if (tl) tl.kill();
     };
   }, { scope: containerRef });
 

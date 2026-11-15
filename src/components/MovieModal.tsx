@@ -343,17 +343,21 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
               {activeTab === 'overview' && (
                 <div className="tab-pane overview-pane">
                   <div id="modalMeta">
-                    <span className="meta-year">{movie.y}</span>
-                    <span className="meta-genre">{movie.g}</span>
+                    {movie.y > 0 && <span className="meta-year">{movie.y}</span>}
+                    {movie.g && <span className="meta-genre">{movie.g}</span>}
                     {movie.runtime > 0 && <span className="meta-runtime">{movie.runtime} min</span>}
-                    <span className="meta-dir">Dir. {movie.dir}</span>
-                    <span className="meta-rating" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                      <span style={{ background: '#f5c518', color: '#000000', fontSize: '0.65rem', fontWeight: 900, padding: '1px 5px', borderRadius: '3px', letterSpacing: '0.04em', lineHeight: 1.2 }}>IMDb</span>
-                      ★ {movie.imdbRating || (typeof movie.r === 'number' ? movie.r.toFixed(1) : movie.r || 'N/A')}
-                      {movie.imdbVotes && <span style={{ color: '#888', fontSize: '0.75rem' }}>({movie.imdbVotes})</span>}
-                    </span>
+                    {movie.dir && movie.dir !== 'Unknown' && movie.dir !== 'Director' && (
+                      <span className="meta-dir">Dir. {movie.dir}</span>
+                    )}
+                    {((movie.imdbRating && movie.imdbRating !== 'N/A') || (typeof movie.r === 'number' && movie.r > 0)) && (
+                      <span className="meta-rating" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{ background: '#f5c518', color: '#000000', fontSize: '0.65rem', fontWeight: 900, padding: '1px 5px', borderRadius: '3px', letterSpacing: '0.04em', lineHeight: 1.2 }}>IMDb</span>
+                        ★ {movie.imdbRating || (typeof movie.r === 'number' ? movie.r.toFixed(1) : '')}
+                        {movie.imdbVotes && <span style={{ color: '#888', fontSize: '0.75rem' }}>({movie.imdbVotes})</span>}
+                      </span>
+                    )}
                   </div>
-                  <p id="modalBlurb">{movie.blurb}</p>
+                  <p id="modalBlurb">{movie.blurb || 'No synopsis available for this title.'}</p>
                   
                   {/* Direct Streaming Providers */}
                   <div className="modal-watch-quick-bar" style={{ marginTop: '30px' }}>
@@ -524,9 +528,12 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                         <div key={i} className="review-card">
                           <div className="review-header">
                             <span className="review-author">{review.author}</span>
-                            <span className="review-rating">
-                              {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
-                            </span>
+                            {typeof review.rating === 'number' && review.rating > 0 && (
+                              <span className="review-rating">
+                                {'★'.repeat(Math.min(5, Math.max(1, Math.round(review.rating))))}
+                                {'☆'.repeat(Math.max(0, 5 - Math.min(5, Math.max(1, Math.round(review.rating)))))}
+                              </span>
+                            )}
                           </div>
                           <p className="review-text">"{review.text}"</p>
                         </div>

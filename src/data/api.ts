@@ -306,7 +306,7 @@ const parseTMDb = (data: any, index: number): Movie | null => {
     cast,
     castMembers,
     tagline: data.tagline || `${genre} · ${year}`,
-    blurb: data.overview || 'No description available.',
+    blurb: (data.overview && typeof data.overview === 'string') ? data.overview.trim() : '',
     mood: genreToMood(genre),
     motif: genreToMotif(genre),
     lang: data.original_language || undefined,
@@ -380,13 +380,20 @@ export const fetchMovieById = async (imdbId: string, index: number): Promise<Mov
               }
 
               if (Array.isArray(detailData.reviews?.results) && detailData.reviews.results.length > 0) {
-                movie.reviews = detailData.reviews.results.slice(0, 10).map((r: any) => ({
-                  author: r.author || r.author_details?.username || 'Verified Critic',
-                  text: (r.content || '').replace(/\r\n/g, '\n').trim(),
-                  rating: r.author_details?.rating
-                    ? Math.max(1, Math.min(5, Math.round(r.author_details.rating / 2)))
-                    : 4,
-                }));
+                movie.reviews = detailData.reviews.results
+                  .filter((r: any) => r && typeof r.content === 'string' && r.content.trim().length > 0)
+                  .slice(0, 10)
+                  .map((r: any) => {
+                    const authRating = typeof r.author_details?.rating === 'number' && r.author_details.rating > 0
+                      ? Math.max(1, Math.min(5, Math.round(r.author_details.rating / 2)))
+                      : undefined;
+                    return {
+                      author: (r.author || r.author_details?.username || 'Reviewer').trim(),
+                      text: (r.content || '').replace(/\r\n/g, '\n').trim(),
+                      date: r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : undefined,
+                      rating: authRating,
+                    };
+                  });
               }
             }
           }
@@ -508,7 +515,9 @@ export const fetchActorFilmography = async (actorIdOrName: number | string): Pro
     const movies: Movie[] = sortedMovies.slice(0, 40).map((m: any, idx: number) => {
       const genre = m.genre_ids?.[0] ? tmdbGenreName(m.genre_ids[0]) : 'Drama';
       const year = m.release_date ? parseInt(m.release_date.split('-')[0]) : 0;
-      const rating = m.vote_average ? parseFloat(m.vote_average.toFixed(1)) : 7.0;
+      const rating = (typeof m.vote_average === 'number' && m.vote_average > 0)
+        ? parseFloat(m.vote_average.toFixed(1))
+        : 0;
       const poster = m.poster_path ? formatPosterUrl(m.poster_path, 'w500') : undefined;
 
       return {
@@ -520,7 +529,7 @@ export const fetchActorFilmography = async (actorIdOrName: number | string): Pro
         runtime: 0,
         dir: 'Unknown',
         tagline: m.character ? `Starred as "${m.character}"` : `${genre} · ${year}`,
-        blurb: m.overview || 'No description available.',
+        blurb: (m.overview && typeof m.overview === 'string') ? m.overview.trim() : '',
         mood: genreToMood(genre),
         motif: genreToMotif(genre),
         img: poster,
@@ -607,7 +616,9 @@ export const getCurrentDateTracking = () => {
 export const parseTMDBDiscoverMovie = (m: any, index: number): Movie => {
   const genre = m.genre_ids?.[0] ? tmdbGenreName(m.genre_ids[0]) : (m.genres?.[0]?.name || 'Drama');
   const year = m.release_date ? (parseInt(m.release_date.split('-')[0]) || 0) : (m.first_air_date ? parseInt(m.first_air_date.split('-')[0]) || 0 : 0);
-  const rating = m.vote_average ? parseFloat(m.vote_average.toFixed(1)) : 7.5;
+  const rating = (typeof m.vote_average === 'number' && m.vote_average > 0)
+    ? parseFloat(m.vote_average.toFixed(1))
+    : 0;
   const poster = m.poster_path
     ? formatPosterUrl(m.poster_path, 'w500')
     : (m.backdrop_path ? formatPosterUrl(m.backdrop_path, 'w500') : '');
@@ -620,9 +631,9 @@ export const parseTMDBDiscoverMovie = (m: any, index: number): Movie => {
     genre_ids: m.genre_ids || [],
     r: rating,
     runtime: m.runtime || 120,
-    dir: m.director || m.dir || 'Director',
+    dir: (m.director || m.dir || '').trim() || undefined,
     tagline: m.tagline || `${genre}${year ? ` · ${year}` : ''}`,
-    blurb: m.overview || 'Emotionally compelling cinematic story.',
+    blurb: (m.overview && typeof m.overview === 'string') ? m.overview.trim() : '',
     mood: genreToMood(genre),
     motif: genreToMotif(genre),
     lang: m.original_language || undefined,

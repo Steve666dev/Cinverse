@@ -13,18 +13,19 @@ export default async function handler(req, res) {
   const { id, ids } = req.query || {};
 
   const possiblePaths = [
+    new URL('../data/cache/imdb_ratings_live.json', import.meta.url),
     path.join(process.cwd(), 'data', 'cache', 'imdb_ratings_live.json'),
     path.join(process.cwd(), 'public', 'data', 'cache', 'imdb_ratings_live.json')
   ];
 
   let ratingsMap = {};
   for (const filePath of possiblePaths) {
-    if (fs.existsSync(filePath)) {
-      try {
+    try {
+      if (typeof filePath === 'object' || fs.existsSync(filePath)) {
         ratingsMap = JSON.parse(fs.readFileSync(filePath, 'utf8'));
         break;
-      } catch {}
-    }
+      }
+    } catch {}
   }
 
   if (ids && typeof ids === 'string') {
