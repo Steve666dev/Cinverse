@@ -6,25 +6,41 @@ import './IntroLoader.css';
 interface IntroLoaderProps {
   loadProgress?: string;
   isFadingOut?: boolean;
+  onComplete?: () => void;
 }
 
 const LETTERS = ['C', 'I', 'N', 'E', 'V', 'E', 'R', 'S', 'E'];
 
-const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
+interface Particle {
+  angle0: number;
+  dist0: number;
+  rot0: number;
+  scale0: number;
+  x: number;
+  y: number;
+  scale: number;
+  rotate: number;
+  opacity: number;
+  img: HTMLImageElement;
+}
+
+const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false, onComplete }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   useGSAP(() => {
-    // 1. Pristine, majestic cinematic title reveal animation
+    let isActive = true;
+
+    // 1. Pristine cinematic title reveal: letters unblur rapidly into focus, then letter-spacing breathes
     if (titleRef.current) {
       const chars = titleRef.current.querySelectorAll('.intro-char');
       gsap.fromTo(
         chars,
         {
           opacity: 0,
-          y: 24,
-          scale: 0.88,
+          y: 22,
+          scale: 0.9,
           filter: 'blur(10px)',
         },
         {
@@ -32,192 +48,199 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
           y: 0,
           scale: 1,
           filter: 'blur(0px)',
-          duration: 0.85,
-          stagger: 0.045,
+          duration: 0.75,
+          stagger: 0.04,
           ease: 'power3.out',
         }
       );
 
       gsap.to(titleRef.current, {
-        letterSpacing: '0.28em',
-        duration: 2.0,
-        ease: 'sine.out',
+        letterSpacing: '0.24em',
+        duration: 2.5,
+        ease: 'power1.out',
       });
     }
 
-    // 2. Canvas particle constellation background
+    // 2. Canvas film poster swirl: runs cleanly for ONE full, smooth 360° round without rush
     const c = canvasRef.current;
     if (!c) return;
-    const ctx = c.getContext("2d");
+    const ctx = c.getContext('2d');
     if (!ctx) return;
 
     let cw = (c.width = window.innerWidth);
     let ch = (c.height = window.innerHeight);
-    let radius = Math.max(cw, ch);
-    const particles = Array(99).fill(null);
-    let tl: gsap.core.Timeline | null = null;
-    let isActive = true;
+    let radius = Math.max(cw, ch) * 0.72;
 
-    // Track all posters we've ever shown so we never repeat
-    const seenPosters = new Set<string>();
+    const PARTICLE_COUNT = 56;
+    const particles: Particle[] = [];
+    let tl: gsap.core.Timeline | null = null;
 
     // TMDB API Key from environment
-    const API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
-    const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w200';
+    const API_KEY = (import.meta.env.VITE_TMDB_API_KEY || '').trim();
 
-    // Fetches unique movies fast without endless loops
-    async function fetchUniqueMovies(count: number, _pages: number = 1) {
-      const newPosters: string[] = [];
+    // Helper to fetch/load posters cleanly
+    async function loadPosters(): Promise<string[]> {
+      const list: string[] = [];
+
+      // Priority 1: Instant cached theatrical posters from local CDN / disk
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1200);
-        const randomPage = Math.floor(Math.random() * 20) + 1;
-        const res = await fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&page=${randomPage}`, {
-          signal: controller.signal
-        }).then(r => r.json()).catch(() => ({ results: [] }));
-        clearTimeout(timeoutId);
-
-        if (Array.isArray(res?.results)) {
-          for (const movie of res.results) {
-            if (movie.poster_path) {
-              const directUrl = IMAGE_BASE_URL + movie.poster_path;
-              const posterUrl = `https://wsrv.nl/?url=${encodeURIComponent(directUrl)}&output=webp&q=70`;
-              if (!seenPosters.has(posterUrl)) {
-                seenPosters.add(posterUrl);
-                newPosters.push(posterUrl);
-                if (newPosters.length >= count) break;
-              }
+        const res = await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null);
+        if (res && res.ok) {
+          const data = await res.json().catch(() => null);
+          if (Array.isArray(data?.movies)) {
+            for (const m of data.movies) {
+              if (m.posterUrl) list.push(m.posterUrl);
             }
           }
         }
-      } catch {
-        // Fallback gracefully
-      }
-      return newPosters;
-    }
+      } catch {}
 
-    async function init() {
-      // 1. Fetch just 1 page (fast) to start the animation cleanly with real posters
-      let posters = await fetchUniqueMovies(20, 1);
-
-      // If network fails completely, fallback to empty array (will draw nothing until update)
-      if (!isActive) return;
-
-      for (let i = 0; i < particles.length; i++) {
-        particles[i] = {
-          x: 0,
-          y: 0,
-          scale: 0, 
-          rotate: 0,
-          img: new Image()
-        }  
-        // Wrap around the available posters
-        if (posters.length > 0) {
-          particles[i].img.src = posters[i % posters.length];
-        }
-      }
-      
-      if (!isActive) return;
-      startAnimation();
-      
-      // 2. Fetch the rest in the background to add variety
-      fetchUniqueMovies(particles.length, 3).then(realPosters => {
-        if (!isActive || realPosters.length === 0) return;
-        
-        for (let i = 0; i < particles.length; i++) {
-          const nextImg = new Image();
-          nextImg.onload = () => {
-            particles[i].img = nextImg;
-          };
-          nextImg.src = realPosters[i % realPosters.length];
-        }
-      });
-      
-      const intervalId = setInterval(async () => {
-        if (!isActive) {
-          clearInterval(intervalId);
-          return;
-        }
-        let newPosters = await fetchUniqueMovies(particles.length, 3);
-        
-        if (newPosters.length > 0 && isActive) {
-          for (let i = 0; i < particles.length; i++) {
-            const nextImg = new Image();
-            nextImg.onload = () => {
-              particles[i].img = nextImg;
-            };
-            nextImg.src = newPosters[i % newPosters.length];
+      // Priority 2: TMDB trending if needed
+      if (list.length < 16 && API_KEY) {
+        try {
+          const controller = new AbortController();
+          const tId = setTimeout(() => controller.abort(), 1500);
+          const tRes = await fetch(`https://api.themoviedb.org/3/trending/movie/day?api_key=${API_KEY}`, {
+            signal: controller.signal
+          }).then(r => r.json()).catch(() => null);
+          clearTimeout(tId);
+          if (Array.isArray(tRes?.results)) {
+            for (const m of tRes.results) {
+              if (m.poster_path) {
+                list.push(`https://image.tmdb.org/t/p/w200${m.poster_path}`);
+              }
+            }
           }
-        }
-      }, 15000); 
+        } catch {}
+      }
+
+      return list;
     }
 
-    function startAnimation() {
-      tl = gsap.timeline({onUpdate:draw})
-        .fromTo(particles, {
-          x:(i)=> {
-            const angle = (i/particles.length * Math.PI *2)- Math.PI/2;
-            return Math.cos(angle*10) * radius;
-          },
-          y:(i)=> {
-            const angle = (i/particles.length * Math.PI *2)- Math.PI/2;
-            return Math.sin(angle*10) * radius;
-          },
-          scale: 1.1,
-          rotate: 0
-        },{
-          duration: 5,
-          ease: "sine.inOut",
-          x: 0,
-          y: 0,
-          scale: 0,
-          rotate: -3,
-          stagger:{each:-0.05, repeat:-1}
-        }, 0)
-        .seek(99);
-    }
-
-    function draw(){  
-      particles.sort( (a,b) => a.scale - b.scale ); 
-      if (!ctx) return;
+    function draw() {
+      if (!ctx || !isActive) return;
       ctx.clearRect(0, 0, cw, ch);
-      ctx.imageSmoothingEnabled = true; 
+      ctx.imageSmoothingEnabled = true;
 
-      particles.forEach((p) => {
+      // Sort by scale for correct 3D depth layering
+      const sorted = [...particles].sort((a, b) => a.scale - b.scale);
+
+      for (const p of sorted) {
+        if (!p || p.scale <= 0.01 || p.opacity <= 0.01) continue;
+        if (!p.img || !p.img.complete || p.img.naturalWidth === 0) continue;
+
+        ctx.save();
         ctx.translate(cw / 2, ch / 2);
-        ctx.rotate( p.rotate );
-        
-        const w = p.img?.width ? p.img.width * p.scale : 0;
-        const h = p.img?.height ? p.img.height * p.scale : 0;
+        ctx.rotate(p.rotate);
+        ctx.globalAlpha = Math.min(1, Math.max(0, p.opacity));
 
-        if (w && h) {
-          ctx.drawImage(
-            p.img,
-            Math.round(p.x - w/2),
-            Math.round(p.y - h/2),
-            Math.round(w),
-            Math.round(h)
-          );
-        }
-        ctx.resetTransform();
+        const baseW = 100;
+        const aspect = p.img.naturalHeight > 0 && p.img.naturalWidth > 0
+          ? p.img.naturalHeight / p.img.naturalWidth
+          : 1.5;
+        const w = baseW * p.scale;
+        const h = w * aspect;
+
+        ctx.drawImage(
+          p.img,
+          Math.round(p.x - w / 2),
+          Math.round(p.y - h / 2),
+          Math.round(w),
+          Math.round(h)
+        );
+        ctx.restore();
+      }
+    }
+
+    function init() {
+      // Synchronously build particles so animation starts immediately without blank delay
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const angle0 = (i / PARTICLE_COUNT) * Math.PI * 2;
+        // 4 concentric orbital bands
+        const ring = i % 4;
+        const dist0 = radius * (0.50 + ring * 0.12);
+        const rot0 = (Math.random() - 0.5) * 0.35;
+        const scale0 = 0.52 + (3 - ring) * 0.08;
+
+        const img = new Image();
+        particles.push({
+          angle0,
+          dist0,
+          rot0,
+          scale0,
+          x: Math.cos(angle0) * dist0,
+          y: Math.sin(angle0) * dist0,
+          scale: scale0,
+          rotate: rot0,
+          opacity: 0,
+          img,
+        });
+      }
+
+      // Populate poster images asynchronously from cache / CDN
+      loadPosters().then((urls) => {
+        if (!isActive || !urls.length) return;
+        particles.forEach((p, idx) => {
+          p.img.src = urls[idx % urls.length];
+        });
+      });
+
+      // One complete, silky smooth, cinematic round (full 360° orbit)
+      // Progress moves from 0 to 1 over 2.5 seconds with graceful ease
+      const animState = { progress: 0 };
+
+      tl = gsap.timeline({
+        onUpdate: () => {
+          const pr = animState.progress;
+          for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            // Exactly ONE full 360° round of orbit (2π radians)
+            const curAngle = p.angle0 + pr * Math.PI * 2;
+            // Smooth inward spiral glide
+            const curDist = p.dist0 * (1 - pr * 0.55);
+            p.x = Math.cos(curAngle) * curDist;
+            p.y = Math.sin(curAngle) * curDist;
+            // Gentle natural rotation and depth scale
+            p.rotate = p.rot0 - pr * 0.75;
+            p.scale = p.scale0 * (1 - pr * 0.35);
+            // Fade in gently at start, stay vibrant, fade softly near finish
+            if (pr < 0.15) {
+              p.opacity = pr / 0.15;
+            } else if (pr > 0.85) {
+              p.opacity = (1 - pr) / 0.15;
+            } else {
+              p.opacity = 1;
+            }
+          }
+          draw();
+        },
+        onComplete: () => {
+          if (isActive) {
+            onComplete?.();
+          }
+        },
+      });
+
+      tl.to(animState, {
+        progress: 1,
+        duration: 2.5,
+        ease: 'power2.inOut',
       });
     }
 
     const handleResize = () => {
       if (!c) return;
-      cw = c.width = innerWidth;
-      ch = c.height = innerHeight;
-      radius = Math.max(cw,ch);
-      if (tl) tl.invalidate();
+      cw = c.width = window.innerWidth;
+      ch = c.height = window.innerHeight;
+      radius = Math.max(cw, ch) * 0.72;
     };
 
-    window.addEventListener("resize", handleResize);
-
+    window.addEventListener('resize', handleResize);
     init();
 
     return () => {
       isActive = false;
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener('resize', handleResize);
       if (tl) tl.kill();
     };
   }, { scope: containerRef });
