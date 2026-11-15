@@ -471,11 +471,25 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       }
     };
 
-    const loadDailyTheatricalFilms = () => {
+    const loadDailyTheatricalFilms = async () => {
       setIsApiLoading(true);
       const deviceToday = getDeviceToday();
-      console.log(`[loadDailyTheatricalFilms] Calling /api/movies?today=${deviceToday.iso}&tz=${encodeURIComponent(deviceToday.tz)}...`);
 
+      // 1. Direct high-speed client-side TMDB discovery
+      try {
+        const directFilms = await fetchClientDirectTheatricalFilms(deviceToday);
+        if (!isCancelled && directFilms.length > 0) {
+          const applied = applyFilmList(directFilms, deviceToday);
+          if (applied) {
+            setIsApiLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Client direct TMDB discovery:', err);
+      }
+
+      // 2. Secondary fallback: query backend /api/movies (for local Express development)
       fetch(`/api/movies?today=${deviceToday.iso}&tz=${encodeURIComponent(deviceToday.tz)}`)
         .then(async (res) => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -483,43 +497,23 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
           if (!contentType.includes('application/json')) throw new Error('Non-JSON response from server');
           return res.json();
         })
-        .then(async (data) => {
+        .then((data) => {
           if (!isCancelled) {
             if (data?.ok && Array.isArray(data.movies) && data.movies.length > 0) {
               const applied = applyFilmList(data.movies, deviceToday);
               if (applied) return;
             }
-            // Fallback to client-side TMDB discovery if server returned empty
-            const directFilms = await fetchClientDirectTheatricalFilms(deviceToday);
-            if (!isCancelled && directFilms.length > 0) {
-              applyFilmList(directFilms, deviceToday);
-            } else if (!isCancelled) {
-              setFilms([]);
-              setApiError("Couldn't load verified releases");
-              onHeroReadyRef.current?.();
-            }
+            setFilms([]);
+            setApiError("Couldn't load verified releases");
+            onHeroReadyRef.current?.();
           }
         })
-        .catch(async (err) => {
-          console.warn('/api/movies backend unreachable, using direct TMDB discovery:', err);
+        .catch((err) => {
+          console.warn('/api/movies backend unreachable:', err);
           if (!isCancelled) {
-            try {
-              const directFilms = await fetchClientDirectTheatricalFilms(deviceToday);
-              if (!isCancelled && directFilms.length > 0) {
-                applyFilmList(directFilms, deviceToday);
-              } else if (!isCancelled) {
-                setFilms([]);
-                setApiError("Couldn't load verified releases");
-                onHeroReadyRef.current?.();
-              }
-            } catch (fallbackErr) {
-              console.error('Direct TMDB discovery failed:', fallbackErr);
-              if (!isCancelled) {
-                setFilms([]);
-                setApiError("Couldn't load verified releases");
-                onHeroReadyRef.current?.();
-              }
-            }
+            setFilms([]);
+            setApiError("Couldn't load verified releases");
+            onHeroReadyRef.current?.();
           }
         })
         .finally(() => {
