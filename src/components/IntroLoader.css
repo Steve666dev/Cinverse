@@ -54,16 +54,20 @@
 }
 
 .intro-title {
-  font-size: clamp(3.5rem, 11vw, 7.5rem);
+  font-size: clamp(1.8rem, 7vw, 5.5rem);
   font-family: 'Bebas Neue', sans-serif;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
+  padding-left: 0.16em; /* Optically center letter-spacing */
   line-height: 1;
   text-align: center;
   margin: 0;
-  padding: 0;
+  padding-right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  max-width: 92vw;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 
 .intro-char {

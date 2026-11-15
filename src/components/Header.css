@@ -328,6 +328,26 @@ header.scrolled {
   }
 }
 
+@media (max-width: 380px) {
+  .liquidglass {
+    height: 54px !important;
+    padding: 0 6px !important;
+  }
+  .apple-glass-dock.dock-container,
+  .apple-glass-dock {
+    height: 54px !important;
+    padding: 0 2px !important;
+    gap: 6px !important;
+  }
+  .apple-glass-dock .dock-inner-items {
+    gap: 6px !important;
+  }
+  .apple-glass-dock .dock-item {
+    max-width: 44px !important;
+    max-height: 44px !important;
+  }
+}
+
 @media (max-width: 400px) {
   .liquidglass {
     height: 58px !important;

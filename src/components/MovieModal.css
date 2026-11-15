@@ -1446,3 +1446,27 @@
     touch-action: manipulation;
   }
 }
+
+@media (max-width: 360px) {
+  #modalCard {
+    height: min(96svh, 96dvh, 96vh);
+    max-height: min(96svh, 96dvh, 96vh);
+    width: 98vw;
+    border-radius: 12px;
+  }
+  #modalPoster {
+    flex: 0 0 120px;
+    min-height: 120px;
+    height: 120px;
+  }
+  #modalBody {
+    padding: 10px 10px 8px;
+  }
+  #modalTitle {
+    font-size: clamp(1.2rem, 5vw, 1.5rem);
+  }
+  .modal-tabs button {
+    padding: 6px 8px 4px;
+    font-size: 0.6rem;
+  }
+}

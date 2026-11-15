@@ -628,37 +628,51 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       .filter((id): id is string => Boolean(id));
     if (ids.length === 0) return;
 
+    const applyRatings = (ratings: Record<string, any>) => {
+      setFilms(prev => prev.map(f => {
+        const filmId = f.imdbId || (f.id && String(f.id).startsWith('tt') ? f.id : null);
+        if (filmId && ratings[filmId]) {
+          const live = ratings[filmId];
+          return {
+            ...f,
+            imdbRating: live.rating || f.imdbRating,
+            imdbVotes: live.votes || f.imdbVotes,
+            rating: live.numericRating || f.rating
+          };
+        }
+        return f;
+      }));
+    };
+
     fetch(`/api/imdb-rating?ids=${encodeURIComponent(ids.join(','))}`)
-      .then(res => res.json())
+      .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => {
         if (data && data.ok && data.ratings) {
-          setFilms(prev => prev.map(f => {
-            const filmId = f.imdbId || (f.id && String(f.id).startsWith('tt') ? f.id : null);
-            if (filmId && data.ratings[filmId]) {
-              const live = data.ratings[filmId];
-              return {
-                ...f,
-                imdbRating: live.rating || f.imdbRating,
-                imdbVotes: live.votes || f.imdbVotes,
-                rating: live.numericRating || f.rating
-              };
-            }
-            return f;
-          }));
+          applyRatings(data.ratings);
+        } else {
+          throw new Error('Static fallback');
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        fetch('/data/cache/imdb_ratings_live.json')
+          .then(r => r.ok ? r.json() : null)
+          .then(map => {
+            if (map && typeof map === 'object') applyRatings(map);
+          })
+          .catch(() => {});
+      });
   }, [films.length]);
 
   // Connect existing IMDb API globally to ensure active film has live authentic score and votes
   useEffect(() => {
     if (!activeFilm || !activeFilm.imdbId) return;
-    fetch(`/api/imdb-rating?id=${encodeURIComponent(activeFilm.imdbId)}`)
-      .then(res => res.json())
+    const targetId = activeFilm.imdbId;
+    fetch(`/api/imdb-rating?id=${encodeURIComponent(targetId)}`)
+      .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => {
         if (data && data.ok && data.rating) {
           setFilms(prev => prev.map(f => {
-            if (f.id === activeFilm.id || f.imdbId === activeFilm.imdbId) {
+            if (f.id === activeFilm.id || f.imdbId === targetId) {
               return {
                 ...f,
                 imdbRating: data.rating,
@@ -668,9 +682,31 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
             }
             return f;
           }));
+        } else {
+          throw new Error('Static fallback');
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        fetch('/data/cache/imdb_ratings_live.json')
+          .then(r => r.ok ? r.json() : null)
+          .then(map => {
+            if (map && map[targetId]) {
+              const live = map[targetId];
+              setFilms(prev => prev.map(f => {
+                if (f.id === activeFilm.id || f.imdbId === targetId) {
+                  return {
+                    ...f,
+                    imdbRating: live.rating || f.imdbRating,
+                    imdbVotes: live.votes || f.imdbVotes,
+                    rating: live.numericRating || f.rating
+                  };
+                }
+                return f;
+              }));
+            }
+          })
+          .catch(() => {});
+      });
   }, [activeFilm?.id, activeFilm?.imdbId]);
 
   // Pre-warm official trailer for active film in background for 0-delay instant playback

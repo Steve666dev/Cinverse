@@ -552,22 +552,33 @@
 }
 
 @media (max-width: 380px) {
+  .a24-experience-wrap {
+    padding: 60px 3vw max(12px, env(safe-area-inset-bottom, 12px));
+  }
   .a24-film-title {
-    font-size: clamp(1.35rem, 6.2vw, 1.8rem);
+    font-size: clamp(1.25rem, 6vw, 1.7rem);
+    letter-spacing: -0.01em;
+  }
+  .a24-actions {
+    gap: 6px;
   }
   .a24-btn-trailer {
-    padding: 8px 10px;
-    font-size: 0.65rem;
-    min-height: 40px;
+    padding: 8px 8px;
+    font-size: 0.62rem;
+    min-height: 38px;
   }
   .a24-btn-imdb {
-    padding: 8px 10px;
-    font-size: 0.62rem;
-    min-height: 40px;
+    padding: 8px 8px;
+    font-size: 0.6rem;
+    min-height: 38px;
   }
   .a24-btn-details {
-    padding: 8px 10px;
-    min-height: 40px;
+    padding: 8px 8px;
+    min-height: 38px;
+  }
+  .a24-nav-btn {
+    width: 38px;
+    height: 38px;
   }
 }
 
