@@ -2,8 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/movies-gallery-logo.png" />
+    <link rel="apple-touch-icon" href="/movies-gallery-logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
     <title>Cineverse — Find your next great film</title>
     <meta name="description" content="Cineverse reads the mood you're in and finds the perfect film for tonight." />
 
@@ -11,11 +15,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-    <!-- Preconnect for YouTube trailers — dramatically speeds up first play -->
-    <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+    <!-- Preconnect for TMDB Image CDN & API (Ultra-fast 0ms handshake poster delivery) -->
+    <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
+    <link rel="dns-prefetch" href="https://image.tmdb.org" />
+    <link rel="preconnect" href="https://api.themoviedb.org" crossorigin />
+    <link rel="dns-prefetch" href="https://api.themoviedb.org" />
+
+    <!-- Preconnect for Cloudflare WebP Image Edge CDN (Ultra-fast poster delivery) -->
+    <link rel="preconnect" href="https://wsrv.nl" crossorigin />
+    <link rel="dns-prefetch" href="https://wsrv.nl" />
+    <link rel="dns-prefetch" href="https://images.weserv.nl" />
+
+    <!-- Preconnect for YouTube trailers — ultra-fast instant playback -->
+    <link rel="preconnect" href="https://www.youtube.com" />
     <link rel="preconnect" href="https://i.ytimg.com" />
     <link rel="dns-prefetch" href="https://www.youtube.com" />
-    <link rel="dns-prefetch" href="https://img.youtube.com" />
+    <link rel="dns-prefetch" href="https://i.ytimg.com" />
+    <link rel="dns-prefetch" href="https://googleads.g.doubleclick.net" />
+    <link rel="dns-prefetch" href="https://static.doubleclick.net" />
 
     <!--
       Font stack:
@@ -31,18 +48,69 @@
     -->
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
 
-    <style>
-      /* Clash Display from Fontshare — premium cinematic display font */
-      @font-face {
-        font-family: 'Clash Display';
-        src: url('https://api.fontshare.com/v2/css?f[]=clash-display@700,600,500&display=swap') format('woff2');
-        font-weight: 500 700;
-        font-display: swap;
-      }
-    </style>
+    <link href="https://api.fontshare.com/v2/css?f%5B%5D=clash-display@700,600,500&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- SVG Liquid Glass Distortion Filter from Lucas Romero Liquid Glass Effect macOS -->
+    <svg style="display: none" aria-hidden="true">
+      <filter
+        id="glass-distortion"
+        x="0%"
+        y="0%"
+        width="100%"
+        height="100%"
+        filterUnits="objectBoundingBox"
+      >
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.01 0.01"
+          numOctaves="1"
+          seed="5"
+          result="turbulence"
+        />
+        <!-- Seeds: 14, 17,  -->
+
+        <feComponentTransfer in="turbulence" result="mapped">
+          <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5" />
+          <feFuncG type="gamma" amplitude="0" exponent="1" offset="0" />
+          <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5" />
+        </feComponentTransfer>
+
+        <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap" />
+
+        <feSpecularLighting
+          in="softMap"
+          surfaceScale="5"
+          specularConstant="1"
+          specularExponent="100"
+          lighting-color="white"
+          result="specLight"
+        >
+          <fePointLight x="-200" y="-200" z="300" />
+        </feSpecularLighting>
+
+        <feComposite
+          in="specLight"
+          operator="arithmetic"
+          k1="0"
+          k2="1"
+          k3="1"
+          k4="0"
+          result="litImage"
+        />
+
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="softMap"
+          scale="150"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+    </svg>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

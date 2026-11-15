@@ -1,0 +1,42 @@
+@keyframes dia-chromatic-sweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes dia-halo-breathe {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(198, 121, 196, 0.35)) drop-shadow(0 0 16px rgba(250, 61, 29, 0.2));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(236, 72, 153, 0.5)) drop-shadow(0 0 22px rgba(255, 176, 5, 0.3));
+  }
+}
+
+.dia-text-reveal-container {
+  display: inline-flex;
+  position: relative;
+  align-items: baseline;
+  vertical-align: baseline;
+  animation: dia-halo-breathe 3s ease-in-out infinite;
+  will-change: filter;
+}
+
+.dia-text-reveal-chromatic {
+  display: inline-block;
+  background-size: 280% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  animation: dia-chromatic-sweep 4s ease-in-out infinite;
+  will-change: background-position;
+}

@@ -1,29 +1,30 @@
 import React from 'react';
 import './Footer.css';
-import { useRef } from 'react';
-import { useInView } from 'framer-motion';
+import { ContactUsButtons } from './ContactUsButtons';
 
 const Footer: React.FC = () => {
-  const ref = useRef(null);
-  const isIntersecting = useInView(ref, { once: true, amount: 0.15 });
-
   return (
     <footer id="about">
-      <div ref={ref} className={`reel-head reveal ${isIntersecting ? 'in-view' : ''}`} style={{ marginBottom: 0 }}>
-        <div>
-          <div className="num">END CREDITS</div>
-          <h2>Roll them.</h2>
+      {/* Brand logo and contact icons */}
+      <div className="footer-upside-bar">
+        <div
+          className="footer-brand-logo-wrap"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          title="Back to top"
+        >
+          <img
+            src="/movies-gallery-logo.png"
+            alt="Movies Gallery Logo"
+            className="footer-brand-logo-img"
+          />
+          <span className="footer-brand-text">MOVIES GALLERY</span>
         </div>
+        <ContactUsButtons size={22} iconOnly showTitle={false} />
       </div>
-      <div className="credits-window">
-        <div className="credits-roll">
-          <div><div className="role">Directed by</div><div className="name">You</div></div>
-          <div><div className="role">Starring</div><div className="name">Your Taste</div></div>
-          <div><div className="role">Recommendations engineered by</div><div className="name">CINEVERSE</div></div>
-          <div><div className="role">Soundtrack</div><div className="name">Whatever's on your headphones</div></div>
-          <div><div className="role">Runtime</div><div className="name">However long you need tonight</div></div>
-          <div><div className="role">Rated</div><div className="name">One More Episode</div></div>
-        </div>
+
+      <div className="footer-bottom">
+        <span>© {new Date().getFullYear()} CINEVERSE. All rights reserved.</span>
+        <span>Recommendations engineered for movie lovers.</span>
       </div>
     </footer>
   );

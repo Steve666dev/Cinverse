@@ -1,6 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
-import Hero from './components/Hero';
+import { MoviesGallery } from './components/MoviesGallery';
+import FeedbackButton from './components/FeedbackButton';
+import { FeedbackModalContent } from './components/FeedbackModal';
+import { BorderBeam } from './components/ui/border-beam';
+import {
+  MorphingDialog,
+  MorphingDialogTrigger,
+  MorphingDialogContainer,
+  MorphingDialogContent,
+} from './components/core/morphing-dialog';
+import { ScrollArea } from './components/website/scroll-area';
 import MovieReel from './components/MovieReel';
 import Footer from './components/Footer';
 import MovieCard from './components/MovieCard';
@@ -9,7 +19,6 @@ import ActorModal from './components/ActorModal';
 import { fetchMoviesFromAPI, fetchIndiaTrendingMovies, fetchTrendingMovies, fetchScifiMovies, fetchRomanceDramaMovies, fetchByGenreAndLanguage, fetchForYouMovies } from './data/api';
 import { useWatchlist } from './context/WatchlistContext';
 import { useRef } from 'react';
-import { useInView } from 'framer-motion';
 import { GlowEffectButton } from './components/GlowEffectButton';
 import IntroLoader from './components/IntroLoader';
 import type { Movie, CastMember } from './types';
@@ -31,27 +40,40 @@ function AppInner() {
   const [exploredMovies, setExploredMovies] = useState<Movie[]>([]);
   const [isExploring, setIsExploring] = useState(false);
   const [hasExplored, setHasExplored] = useState(false);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [loadProgress, setLoadProgress] = useState('Connecting to IMDB...');
+  const [isIntroMounted, setIsIntroMounted] = useState(true);
+  const [isIntroFadingOut, setIsIntroFadingOut] = useState(false);
+  const heroReadyRef = useRef(false);
+  const reelsReadyRef = useRef(false);
+  const introStartTimeRef = useRef(Date.now());
+  const hasTriggeredFadeRef = useRef(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [selectedActor, setSelectedActor] = useState<CastMember | null>(null);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [discoverTitle, setDiscoverTitle] = useState('Top Rated Movies');
   const [discoverDesc, setDiscoverDesc] = useState('Critically acclaimed movies across all genres and languages.');
 
   const { watchlist } = useWatchlist();
-  const watchlistRef = useRef(null);
-  const isWatchlistIntersecting = useInView(watchlistRef, { once: true, amount: 0.15 });
+
+  const preloadReelPosters = (list: Movie[]) => {
+    list.forEach(m => {
+      if (m.img) {
+        const img = new Image();
+        img.src = m.img;
+      }
+    });
+  };
 
   const loadForYou = useCallback(async () => {
     const topTastes = getTopTastes();
     const topActors = getTopActors();
-    if (topTastes.length > 0 || topActors.length > 0) {
-      try {
-        const movies = await fetchForYouMovies(topTastes, topActors);
+    try {
+      const movies = await fetchForYouMovies(topTastes, topActors);
+      if (movies && movies.length > 0) {
         setForYouMovies(movies);
-      } catch (e) {
-        console.error(e);
+        preloadReelPosters(movies);
       }
+    } catch (e) {
+      console.error('Failed to load For You:', e);
     }
   }, []);
 
@@ -64,48 +86,94 @@ function AppInner() {
     return () => window.removeEventListener('taste_updated', loadForYou);
   }, [loadForYou]);
 
+  const triggerReveal = useCallback(() => {
+    if (hasTriggeredFadeRef.current) return;
+    hasTriggeredFadeRef.current = true;
+    setIsIntroFadingOut(true);
+    setTimeout(() => {
+      setIsIntroMounted(false);
+    }, 700);
+  }, []);
+
+  const checkReadiness = useCallback(() => {
+    if (hasTriggeredFadeRef.current) return;
+    const elapsed = Date.now() - introStartTimeRef.current;
+    const MIN_INTRO_DURATION = 800; // Fast and snappy intro reveal
+    if (elapsed < MIN_INTRO_DURATION) {
+      setTimeout(checkReadiness, MIN_INTRO_DURATION - elapsed);
+      return;
+    }
+    if (heroReadyRef.current && reelsReadyRef.current) {
+      triggerReveal();
+    }
+  }, [triggerReveal]);
+
+  const handleHeroReady = useCallback(() => {
+    heroReadyRef.current = true;
+    checkReadiness();
+  }, [checkReadiness]);
+
   useEffect(() => {
-    const loadInitialData = async () => {
-      const startTime = Date.now();
-      try {
-        setLoadProgress("Fetching India's trending blockbusters...");
-        const indiaTrending = await fetchIndiaTrendingMovies();
-        setIndiaTrendingMovies(indiaTrending);
+    let isCancelled = false;
+    let anyReelReady = false;
 
-        setLoadProgress('Fetching global trending films...');
-        const trending = await fetchTrendingMovies();
-        setTrendingMovies(trending);
-
-        setLoadProgress('Loading sci-fi & fantasy...');
-        const scifi = await fetchScifiMovies();
-        setScifiMovies(scifi);
-
-        setLoadProgress('Loading drama & romance...');
-        const romance = await fetchRomanceDramaMovies();
-        setRomanceMovies(romance);
-
-        setLoadProgress('Building your catalog...');
-      } catch (error) {
-        console.error('Failed to fetch initial data', error);
-      } finally {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < 2000) {
-          await new Promise(resolve => setTimeout(resolve, 2000 - elapsed));
-        }
-        // Trigger CSS fade out
-        const loader = document.querySelector('.intro-loader');
-        if (loader) {
-          loader.classList.add('fade-out');
-        }
-        
-        // Wait for CSS fade out to finish before removing from React DOM
-        setTimeout(() => {
-          setIsInitialLoading(false);
-        }, 800);
+    const markFirstReelReady = () => {
+      if (!anyReelReady) {
+        anyReelReady = true;
+        reelsReadyRef.current = true;
+        checkReadiness();
       }
     };
-    loadInitialData();
-  }, []);
+
+    // Independent progressive loading for all 4 initial reels:
+    // 1. India's Trending
+    fetchIndiaTrendingMovies().then(india => {
+      if (!isCancelled && india.length > 0) {
+        setIndiaTrendingMovies(india);
+        markFirstReelReady();
+        preloadReelPosters(india);
+      }
+    }).catch(err => console.error('India trending error:', err));
+
+    // 2. Global Trending
+    fetchTrendingMovies().then(trending => {
+      if (!isCancelled && trending.length > 0) {
+        setTrendingMovies(trending);
+        markFirstReelReady();
+        preloadReelPosters(trending);
+      }
+    }).catch(err => console.error('Global trending error:', err));
+
+    // 3. Worlds Beyond Ours (Sci-Fi)
+    fetchScifiMovies().then(scifi => {
+      if (!isCancelled && scifi.length > 0) {
+        setScifiMovies(scifi);
+        markFirstReelReady();
+        preloadReelPosters(scifi);
+      }
+    }).catch(err => console.error('SciFi error:', err));
+
+    // 4. Heart & Soul (Drama & Romance)
+    fetchRomanceDramaMovies().then(romance => {
+      if (!isCancelled && romance.length > 0) {
+        setRomanceMovies(romance);
+        markFirstReelReady();
+        preloadReelPosters(romance);
+      }
+    }).catch(err => console.error('Romance error:', err));
+
+    // Safety timeout: Never keep the user waiting more than 3.5s even if network is slow
+    const safetyTimeout = setTimeout(() => {
+      if (!hasTriggeredFadeRef.current) {
+        triggerReveal();
+      }
+    }, 3500);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(safetyTimeout);
+    };
+  }, [checkReadiness, triggerReveal]);
 
 
   const handleSearch = async (query: string) => {
@@ -158,6 +226,7 @@ function AppInner() {
 
       const results = await fetchByGenreAndLanguage(genreId, langCode, 1);
       setExploredMovies(results);
+      preloadReelPosters(results);
 
       // Smooth scroll via Locomotive Scroll to discover section
       setTimeout(() => {
@@ -198,18 +267,36 @@ function AppInner() {
     if (!selectedMovie) locoScroll?.start();
   }, [locoScroll, selectedMovie]);
 
-  if (isInitialLoading) {
-    return <IntroLoader loadProgress={loadProgress} />;
-  }
+  const handleOpenA24Details = useCallback(async (filmTitle: string) => {
+    const existing = Array.from(uniqueMoviesMap.values()).find(
+      m => m.t.toLowerCase() === filmTitle.toLowerCase()
+    );
+    if (existing) {
+      handleOpenModal(existing);
+      return;
+    }
+    try {
+      const results = await fetchMoviesFromAPI(filmTitle);
+      if (results && results.length > 0) {
+        handleOpenModal(results[0]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [uniqueMoviesMap, handleOpenModal]);
 
   return (
     <>
+      {isIntroMounted && <IntroLoader isFadingOut={isIntroFadingOut} />}
       <Header
         onSearch={handleSearch}
         onDiscover={handleDiscover}
       />
-      <main>
-        <Hero />
+      <main id="top">
+        <MoviesGallery
+          onOpenMovieModal={handleOpenA24Details}
+          onHeroReady={handleHeroReady}
+        />
 
         {/* Search Results Section */}
         {hasSearched && (
@@ -309,21 +396,104 @@ function AppInner() {
         </section>
 
         {watchlistMovies.length > 0 && (
-          <section id="watchlist" style={{ padding: '90px 5%' }}>
-            <div ref={watchlistRef} className={`reel-head reveal ${isWatchlistIntersecting ? 'in-view' : ''}`} style={{ marginBottom: 0 }}>
+          <section id="watchlist" style={{ padding: '70px 5%', textAlign: 'left' }}>
+            <div className="reel-head reveal in-view" style={{ marginBottom: 0 }}>
               <div>
-                <div className="num">SAVED</div>
-                <h2>My Watchlist</h2>
-                <p>Films you've tagged with ♥ — persists locally so you don't lose them.</p>
+                <div className="num" style={{ color: 'var(--blue-neon)', letterSpacing: '0.2em' }}>✦ WATCHLIST</div>
+                <h2 style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', fontWeight: 700, color: '#fff', margin: '4px 0 10px' }}>My Watchlist</h2>
+                <p style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: '0.95rem' }}>Films you've bookmarked to watch later — saved locally on your device.</p>
               </div>
             </div>
-            <div className="grid-results" style={{ marginTop: '40px' }}>
+            <div className="grid-results" style={{ marginTop: '36px' }}>
               {watchlistMovies.map(movie => (
                 <MovieCard key={movie.id} movie={movie} onClick={() => handleOpenModal(movie)} />
               ))}
             </div>
           </section>
         )}
+
+        <section
+          id="feedback"
+          style={{
+            padding: '20px 0 60px',
+            textAlign: 'center',
+            position: 'relative',
+            overflow: 'visible',
+            width: '100%',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              height: 'clamp(280px, 45vh, 380px)',
+              margin: '0 auto',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'visible',
+            }}
+          >
+            <MorphingDialog
+              transition={{
+                type: 'spring',
+                stiffness: 200,
+                damping: 24,
+              }}
+              open={isFeedbackModalOpen}
+              onOpenChange={setIsFeedbackModalOpen}
+            >
+              <FeedbackButton
+                label="Feedback"
+                size={44}
+                gooColor="#ffffff"
+                textColor="#000000"
+                cursor="native"
+                reach={160}
+                background="transparent"
+                style={{ minWidth: 0, minHeight: 0, width: '100%', height: '100%' }}
+                onClick={() => setIsFeedbackModalOpen(true)}
+              />
+
+              <MorphingDialogTrigger
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 120,
+                  height: 44,
+                  borderRadius: '9999px',
+                  pointerEvents: 'none',
+                  opacity: 0,
+                }}
+              >
+                <span />
+              </MorphingDialogTrigger>
+
+              <MorphingDialogContainer>
+                <MorphingDialogContent
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    maxWidth: '480px',
+                    borderRadius: '16px',
+                    border: '1px solid #2e2e2e',
+                    background: '#0a0a0a',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.95)',
+                    color: '#ffffff',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <ScrollArea className="h-full max-h-[92vh] max-h-[92dvh]" type="scroll">
+                    <FeedbackModalContent onClose={() => setIsFeedbackModalOpen(false)} />
+                  </ScrollArea>
+                  <BorderBeam duration={8} size={100} />
+                </MorphingDialogContent>
+              </MorphingDialogContainer>
+            </MorphingDialog>
+          </div>
+        </section>
       </main>
       <Footer />
       <MovieModal

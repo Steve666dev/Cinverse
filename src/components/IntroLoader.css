@@ -1,42 +1,45 @@
 .intro-loader {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
+  inset: 0;
+  width: 100%;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgb(14, 16, 15);
-  z-index: 9999;
+  background: #08090a;
+  z-index: 99999;
   overflow: hidden;
-  transition: opacity 0.8s ease, visibility 0.8s ease;
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.65s ease;
+  user-select: none;
 }
 
 .intro-loader.fade-out {
   opacity: 0;
+  transform: scale(1.02);
   visibility: hidden;
+  pointer-events: none;
 }
 
 .intro-canvas {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
 }
 
-/* Optional overlay to make text more readable over bright posters */
+/* Vignette overlay to spotlight title */
 .intro-overlay {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at center, rgba(14,16,15,0.1) 0%, rgba(14,16,15,0.4) 100%);
+  background: radial-gradient(circle at center, rgba(8, 9, 10, 0.45) 0%, rgba(8, 9, 10, 0.88) 100%);
   z-index: 2;
+  pointer-events: none;
 }
 
 .intro-content {
@@ -45,23 +48,31 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
 }
 
 .intro-title {
-  font-size: clamp(3rem, 10vw, 8rem); /* Cinematic, fully fluid typography */
-  color: var(--blue-bright);
+  font-size: clamp(3.5rem, 11vw, 7.5rem);
   font-family: 'Bebas Neue', sans-serif;
-  letter-spacing: .15em;
-  text-shadow: 0 0 30px rgba(96,165,250,0.6);
+  letter-spacing: 0.18em;
   line-height: 1;
   text-align: center;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.intro-progress {
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--muted);
-  letter-spacing: .2em;
-  font-size: clamp(0.75rem, 2vw, 1rem); /* Make it legible across devices */
-  text-align: center;
+.intro-char {
+  display: inline-block;
+  color: #f1f5f9;
+  text-shadow:
+    0 0 20px rgba(96, 165, 250, 0.6),
+    0 0 50px rgba(96, 165, 250, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.8);
+  font-weight: 400;
+  will-change: transform, opacity, filter;
 }

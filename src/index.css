@@ -73,16 +73,26 @@
 }
 
 
+/* ── Universal Fluidity & Box-Sizing Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Fluid Media & Video Scaling */
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
 /* ── Locomotive Scroll v5 ── */
 html {
+  overflow-x: hidden;
   scroll-behavior: auto !important; /* Let LS handle smooth scroll, not the browser */
 }
 [data-locomotive-scroll-stop] {
   overscroll-behavior: contain;
 }
 
-
-html { }
 body {
   background: var(--bg);
   color: var(--cream);
@@ -95,6 +105,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overscroll-behavior: none;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Selection */
@@ -205,6 +217,32 @@ mark { background: var(--blue); color: #fff; padding: 0 4px; border-radius: 3px;
   .grid-results {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .grid-results {
+    grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+    gap: 10px;
+    padding: 0 4%;
+  }
+}
+
+/* ── Cross-Platform Mobile Quirks & Touch Adaptability ── */
+@media (max-width: 768px) {
+  /* Prevent iOS Safari 100%+ auto-zoom on input focus by guaranteeing 16px font-size */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  /* Remove sticky hover artifacts and optimize touch responsiveness */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, a, input, select, textarea, [role="button"] {
+    touch-action: manipulation;
   }
 }
 

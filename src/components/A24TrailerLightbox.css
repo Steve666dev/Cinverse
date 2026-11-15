@@ -1,0 +1,502 @@
+/* ── Clean Cinematic Trailer Lightbox Modal ── */
+
+/* Modal Backdrop */
+.a24-trailer-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100dvh;
+  z-index: 999999;
+  background: rgba(4, 4, 6, 0.98);
+  display: flex;
+  align-items: safe center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  user-select: none;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  box-sizing: border-box;
+}
+
+.a24-trailer-modal-backdrop::-webkit-scrollbar {
+  width: 6px;
+}
+
+.a24-trailer-modal-backdrop::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+}
+
+/* Clean, Modern Cinematic Trailer Modal Card */
+.a24-trailer-modal-card {
+  box-sizing: border-box;
+  position: relative;
+  margin: auto;
+  width: 100%;
+  max-width: 1080px;
+  border-radius: 20px;
+  background: rgba(14, 15, 20, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 24px 70px rgba(0, 0, 0, 0.95),
+    0 0 1px rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.a24-trailer-modal-card * {
+  box-sizing: border-box;
+}
+
+/* Modal Content Inner Wrap */
+.a24-trailer-modal-content {
+  box-sizing: border-box;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 26px 24px;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ── Modal Header Bar ── */
+.a24-trailer-modal-header {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+  padding-right: 20px;
+}
+
+.a24-trailer-modal-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.a24-trailer-badge {
+  font-family: var(--font-mono, 'Space Mono', monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 4px 10px;
+  border-radius: 4px;
+  line-height: 1.2;
+  flex-shrink: 0 !important;
+}
+
+.a24-trailer-film-title {
+  font-family: var(--font-display, 'Syne', sans-serif);
+  font-size: clamp(1.05rem, 2.2vw, 1.45rem);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.a24-trailer-modal-center {
+  flex: 0 1 auto;
+  min-width: 0;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 12px;
+}
+
+.a24-trailer-tagline {
+  font-family: var(--font-mono, 'Space Mono', monospace);
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.38);
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.a24-trailer-modal-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0 !important;
+  margin-left: auto;
+  padding-right: 6px;
+}
+
+.a24-trailer-yt-btn {
+  box-sizing: border-box;
+  font-family: var(--font-mono, 'Space Mono', monospace);
+  font-size: 0.74rem;
+  color: #cccccc;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0 !important;
+}
+
+.a24-trailer-yt-short {
+  display: none;
+}
+
+.a24-trailer-yt-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateY(-1px);
+}
+
+/* ── Cross / Close Button (CSS-Close-Button.zip animated effect) ── */
+.a24-trailer-close-btn {
+  box-sizing: border-box;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-right: 6px;
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+  flex-shrink: 0 !important;
+  outline: none;
+}
+
+.a24-trailer-close-btn:before,
+.a24-trailer-close-btn:after {
+  content: "";
+  width: 17px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 1px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -1px;
+  margin-left: -8.5px;
+  transition: transform 0.3s ease-out;
+  pointer-events: none;
+}
+
+/* Inactive state: ✕ cross */
+.a24-trailer-close-btn:before {
+  transform: rotate(-45deg);
+}
+
+.a24-trailer-close-btn:after {
+  transform: rotate(45deg);
+}
+
+/* Hover state: 180deg animated rotation into horizontal line with subtle glow */
+.a24-trailer-close-btn:hover {
+  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.15);
+}
+
+.a24-trailer-close-btn:hover:before,
+.a24-trailer-close-btn:hover:after {
+  transform: rotate(180deg);
+}
+
+.a24-trailer-close-btn:active {
+  transform: scale(0.92);
+}
+
+/* ── 16:9 Video Player Frame ── */
+.a24-trailer-video-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.9);
+  background: #000000;
+  transform: translateZ(0);
+  will-change: transform;
+  contain: content;
+}
+
+.a24-trailer-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: radial-gradient(circle at center, #15151c 0%, #070709 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.a24-trailer-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: #ff2e54;
+  animation: a24-spin 0.8s linear infinite;
+}
+
+.a24-trailer-loader-text {
+  font-family: var(--font-mono, 'Space Mono', monospace);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+@keyframes a24-spin {
+  to { transform: rotate(360deg); }
+}
+
+.a24-trailer-video-frame iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  z-index: 2;
+  background: transparent;
+  transform: translateZ(0);
+}
+
+/* ── Modal Footer ── */
+.a24-trailer-modal-footer {
+  text-align: center;
+  font-family: var(--font-mono, 'Space Mono', monospace);
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.08em;
+  padding-top: 2px;
+}
+
+.a24-trailer-modal-footer kbd {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.7rem;
+}
+
+/* ── Responsive Adaptations ── */
+@media (max-width: 1024px) {
+  .a24-trailer-modal-center {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .a24-trailer-modal-backdrop {
+    padding: max(12px, env(safe-area-inset-top, 12px)) max(16px, env(safe-area-inset-right, 16px)) max(16px, env(safe-area-inset-bottom, 16px)) max(16px, env(safe-area-inset-left, 16px));
+  }
+
+  .a24-trailer-modal-card {
+    border-radius: 16px;
+  }
+
+  .a24-trailer-modal-content {
+    padding: 14px 16px 16px;
+    gap: 10px;
+    border-radius: 14px;
+  }
+
+  .a24-trailer-modal-header {
+    gap: 10px;
+    padding-right: 16px;
+  }
+
+  .a24-trailer-modal-left {
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .a24-trailer-film-title {
+    font-size: 1.05rem;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .a24-trailer-badge {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    flex-shrink: 0;
+  }
+
+  .a24-trailer-modal-right {
+    gap: 8px;
+    padding-right: 4px;
+    flex-shrink: 0 !important;
+  }
+
+  .a24-trailer-yt-btn {
+    padding: 6px 12px;
+    font-size: 0.68rem;
+    flex-shrink: 0 !important;
+  }
+
+  .a24-trailer-close-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    margin-right: 4px;
+    flex-shrink: 0 !important;
+    touch-action: manipulation;
+  }
+
+  .a24-trailer-close-btn:before,
+  .a24-trailer-close-btn:after {
+    width: 14px;
+    margin-left: -7px;
+  }
+
+  .a24-trailer-modal-footer {
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .a24-trailer-modal-backdrop {
+    padding: 10px max(14px, env(safe-area-inset-right, 14px));
+  }
+
+  .a24-trailer-modal-content {
+    padding: 12px 14px 14px;
+    gap: 8px;
+  }
+
+  .a24-trailer-modal-header {
+    gap: 6px;
+    padding-right: 14px;
+  }
+
+  .a24-trailer-modal-left {
+    gap: 6px;
+  }
+
+  .a24-trailer-badge {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+  }
+
+  .a24-trailer-film-title {
+    font-size: 0.88rem;
+  }
+
+  .a24-trailer-modal-right {
+    gap: 6px;
+    padding-right: 4px;
+    flex-shrink: 0 !important;
+  }
+
+  .a24-trailer-yt-full {
+    display: none;
+  }
+
+  .a24-trailer-yt-short {
+    display: inline;
+  }
+
+  .a24-trailer-yt-btn {
+    padding: 6px 10px;
+    font-size: 0.66rem;
+  }
+
+  .a24-trailer-close-btn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+    margin-right: 4px;
+    flex-shrink: 0 !important;
+    touch-action: manipulation;
+  }
+
+  .a24-trailer-close-btn:before,
+  .a24-trailer-close-btn:after {
+    width: 12px;
+    margin-left: -6px;
+  }
+}
+
+/* ── Landscape Mobile & Short Viewports (Phone rotated horizontally) ── */
+@media (max-height: 600px) {
+  .a24-trailer-modal-backdrop {
+    padding: 8px 12px;
+    align-items: flex-start;
+  }
+
+  .a24-trailer-modal-card {
+    margin: 0 auto;
+    max-height: calc(100dvh - 16px);
+  }
+
+  .a24-trailer-modal-header {
+    padding: 6px 12px;
+    min-height: 38px;
+  }
+
+  .a24-trailer-video-frame {
+    max-height: calc(100dvh - 84px);
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .a24-trailer-close-btn {
+    width: 32px;
+    height: 32px;
+    margin-right: 4px;
+    flex-shrink: 0 !important;
+  }
+
+  .a24-trailer-modal-footer {
+    display: none;
+  }
+}

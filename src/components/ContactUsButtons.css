@@ -1,0 +1,155 @@
+.contact-buttons-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.contact-buttons-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8e8e93;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contact-buttons-title::before,
+.contact-buttons-title::after {
+  content: "";
+  display: inline-block;
+  width: 24px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.contact-buttons-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.contact-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  min-height: 44px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-decoration: none;
+  color: #e5e5e5;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.contact-btn:hover {
+  transform: translateY(-2px);
+  color: #ffffff;
+}
+
+/* Brand specific hover accents */
+.contact-btn-email:hover {
+  background: rgba(234, 67, 53, 0.15);
+  border-color: rgba(234, 67, 53, 0.45);
+  color: #ff6b6b;
+  box-shadow: 0 4px 16px rgba(234, 67, 53, 0.25);
+}
+
+.contact-btn-linkedin:hover {
+  background: rgba(10, 102, 194, 0.15);
+  border-color: rgba(10, 102, 194, 0.45);
+  color: #38bdf8;
+  box-shadow: 0 4px 16px rgba(10, 102, 194, 0.25);
+}
+
+.contact-btn-github:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.45);
+  color: #c084fc;
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.25);
+}
+
+.contact-btn svg {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.contact-btn:hover svg {
+  transform: scale(1.12);
+}
+
+/* Icon-only mode */
+.contact-buttons-icon-only {
+  width: auto;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.contact-buttons-icon-only .contact-buttons-title {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  color: var(--gold, #f5c518);
+  margin-bottom: 2px;
+}
+
+.contact-buttons-icon-only .contact-buttons-title::before,
+.contact-buttons-icon-only .contact-buttons-title::after {
+  display: none;
+}
+
+.contact-buttons-row-icons {
+  gap: 10px;
+  width: auto;
+  flex-wrap: nowrap;
+}
+
+.contact-btn-icon-only {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  flex-shrink: 0;
+  touch-action: manipulation;
+}
+
+.contact-btn-icon-only.contact-btn-email:hover {
+  background: rgba(234, 67, 53, 0.18);
+  border-color: rgba(234, 67, 53, 0.6);
+  box-shadow: 0 0 16px rgba(234, 67, 53, 0.4);
+}
+
+.contact-btn-icon-only.contact-btn-linkedin:hover {
+  background: rgba(10, 102, 194, 0.2);
+  border-color: rgba(10, 102, 194, 0.7);
+  box-shadow: 0 0 16px rgba(10, 102, 194, 0.45);
+}
+
+.contact-btn-icon-only.contact-btn-github:hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.65);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.45);
+}
+
+@media (max-width: 640px) {
+  .contact-buttons-icon-only {
+    align-items: flex-start;
+  }
+}

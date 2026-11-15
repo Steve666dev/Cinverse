@@ -15,7 +15,9 @@
   background: #0d1117;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  /* Removed preserve-3d — forced expensive 3D compositing stacking context on every card */
+  isolation: isolate;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  mask-image: radial-gradient(white, black);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease;
   cursor: pointer;
 }
@@ -29,15 +31,37 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
+/* Poster Loading Shimmer Skeleton */
+.poster-loading-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #0d1117 0%, #1c2333 50%, #0d1117 100%);
+  background-size: 200% 100%;
+  animation: card-shimmer 1.8s infinite;
+  z-index: 0;
+}
+
+@keyframes card-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* Poster Image */
 .poster-img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center top;
   display: block;
-  transition: transform 0.4s ease, filter 0.3s ease;
-  transform: translateZ(0);
+  opacity: 1;
+  will-change: transform;
+  transition: transform 0.3s ease, filter 0.25s ease;
+}
+
+.poster-img.loaded {
+  opacity: 1;
 }
 
 .poster-inner:hover .poster-img {
@@ -167,7 +191,7 @@
   text-transform: uppercase;
 }
 
-/* Heart Button */
+/* Watchlist Bookmark Button */
 .poster-heart-btn {
   position: absolute;
   bottom: 10px;
@@ -176,27 +200,33 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.75); /* Replaced backdrop-filter blur — 5x cheaper */
+  background: rgba(0, 0, 0, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+  touch-action: manipulation;
+}
+.poster-heart-btn::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
 }
 .poster-heart-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: #ef4444;
-  color: #ef4444;
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #3b82f6;
   transform: scale(1.15);
 }
 .poster-heart-btn.saved {
-  background: #ef4444;
-  border-color: #ef4444;
-  color: #ffffff;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  background: rgba(59, 130, 246, 0.25);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
 }
 
 /* Click ripple */
@@ -222,3 +252,29 @@
 .motif-fantasy { background: linear-gradient(145deg, #0f2420 0%, #030712 100%); }
 .motif-music   { background: linear-gradient(145deg, #241022 0%, #030712 100%); }
 .motif-horror  { background: linear-gradient(145deg, #1f0808 0%, #030712 100%); }
+
+/* ── Mobile Responsive Card Adjustments ── */
+@media (max-width: 600px) {
+  .poster-card {
+    flex: 0 0 175px;
+    width: 175px;
+    padding: 6px;
+  }
+  .poster-title {
+    font-size: 1.15rem;
+  }
+  .poster-info-block {
+    padding: 10px 8px 8px;
+  }
+}
+
+@media (max-width: 380px) {
+  .poster-card {
+    flex: 0 0 152px;
+    width: 152px;
+    padding: 4px;
+  }
+  .poster-title {
+    font-size: 1.05rem;
+  }
+}

@@ -1,4 +1,4 @@
-import type { Movie, Review, CastMember, ActorDetails, WatchProvider } from '../types';
+import type { Movie, CastMember, ActorDetails, WatchProvider, Review } from '../types';
 import CryptoJS from 'crypto-js';
 
 // ─── API Config ───────────────────────────────────────────────────────────────
@@ -12,15 +12,27 @@ const decryptKey = (encrypted: string) => {
   }
 };
 
-const DEFAULT_OMDB_ENC = 'U2FsdGVkX1/voglqp1uFiQ8Ia8RowkkeUHU1PtgRSEU=';
-
-const OMDB_KEY = decryptKey(import.meta.env.VITE_OMDB_API_KEY_ENC || DEFAULT_OMDB_ENC);
+const OMDB_KEY = import.meta.env.VITE_OMDB_API_KEY || (import.meta.env.VITE_OMDB_API_KEY_ENC ? decryptKey(import.meta.env.VITE_OMDB_API_KEY_ENC) : '');
 const OMDB_URL = 'https://www.omdbapi.com/';
 
-const TMDB_KEY = import.meta.env.VITE_TMDB_API_KEY || 'be6b01a4600e4ced87a42b190ea40313';
-const TMDB_URL = 'https://api.themoviedb.org/3';
-const TMDB_IMG = 'https://image.tmdb.org/t/p/w780'; // Upgraded from w500 to w780 HD
-const TMDB_ENABLED = Boolean(TMDB_KEY && TMDB_KEY.length > 10);
+export const TMDB_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
+export const TMDB_URL = 'https://api.themoviedb.org/3';
+export const TMDB_IMG = 'https://image.tmdb.org/t/p/w780';
+export const TMDB_ENABLED = Boolean(TMDB_KEY && TMDB_KEY.length > 10);
+
+// High performance TMDB poster formatter: defaults to lightweight w342 (~30KB) for instant loading
+export const formatPosterUrl = (posterPath?: string, size: 'w342' | 'w500' | 'w780' | 'original' = 'w342'): string => {
+  if (!posterPath) return '';
+  const clean = posterPath.trim();
+  if (clean.startsWith('http://') || clean.startsWith('https://')) {
+    if (clean.includes('image.tmdb.org/t/p/')) {
+      return clean.replace(/\/t\/p\/(w\d+|original)\//, `/t/p/${size}/`);
+    }
+    return clean;
+  }
+  const normalized = clean.startsWith('/') ? clean : `/${clean}`;
+  return `https://image.tmdb.org/t/p/${size}${normalized}`;
+};
 
 // Upgrade low-res OMDB/Amazon thumbnails to crystal clear 4K/HD original masters
 const upgradePosterUrl = (url?: string): string | undefined => {
@@ -35,42 +47,6 @@ const upgradePosterUrl = (url?: string): string | undefined => {
   return url;
 };
 
-// ─── Curated IMDB IDs ─────────────────────────────────────────────────────────
-const INDIA_TRENDING_IDS = [
-  'toxic_mock', // Toxic: A Fairy Tale for Grown-ups
-  'tt8178634',  // RRR
-  'tt12450376', // Kalki 2898 AD
-  'tt15354916', // Jawan
-  'tt27798363', // Stree 2
-  'tt10638522', // Baahubali 2: The Conclusion
-  'tt14948432', // Animal
-  'tt11905962', // K.G.F: Chapter 2
-  'tt7391996',  // Pushpa: The Rise
-  'tt5074352',  // Dangal
-  'tt1187043',  // 3 Idiots
-  'tt15671028', // Salaar
-  'tt13651632', // Leo
-];
-const TRENDING_IDS = [
-  'tt1375666', 'tt0816692', 'tt4154796', 'tt0110912', 'tt6751668',
-  'tt1745960', 'tt15239678', 'tt0468569', 'tt0111161', 'tt0137523',
-  'tt4154756', 'tt10872600',
-];
-const SCIFI_IDS = [
-  'tt0133093', 'tt0107290', 'tt0076759', 'tt0816692',
-  'tt1856101', 'tt1160419', 'tt0848228', 'tt13280864',
-];
-const ROMANCE_DRAMA_IDS = [
-  'tt3783958', 'tt2582802', 'tt3521164', 'tt1675434',
-  'tt2096673', 'tt0119217', 'tt3480822', 'tt4633694',
-];
-
-const mockReviews: Review[] = [
-  { author: 'CinematicVoyager', rating: 5, text: 'An absolute masterpiece. The pacing, the cinematography — everything is flawless.' },
-  { author: 'MovieBuff99',      rating: 4, text: 'Really enjoyed it! A fantastic experience worth every minute.' },
-  { author: 'TheCriticalEye',  rating: 5, text: "I've watched this five times and still find new details. Truly transcendent." },
-];
-
 // ─── TMDB Genre ID map — defined first so parseTMDb can use it ───────────────
 const TMDB_GENRE_MAP: Record<number, string> = {
   28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
@@ -80,126 +56,15 @@ const TMDB_GENRE_MAP: Record<number, string> = {
 };
 const tmdbGenreName = (id: number): string => TMDB_GENRE_MAP[id] || 'Drama';
 
-// ─── Direct Streaming Verified Database ───────────────────────────────────────
-// Exact direct stream / watch URLs for top pan-Indian & international blockbusters
-const DIRECT_STREAM_MAP: Record<string, WatchProvider[]> = {
-  'rrr': [
-    { name: 'Netflix', type: 'stream', badge: 'Stream in 4K Dolby Atmos', quality: '4K Ultra HD', url: 'https://www.netflix.com/title/81476453', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-    { name: 'Disney+ Hotstar', type: 'stream', badge: 'Stream Tamil/Telugu/Mal/Kan', quality: '4K Dolby Vision', url: 'https://www.hotstar.com/in/movies/rrr/1260108122', logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
-    { name: 'ZEE5', type: 'stream', badge: 'Stream Telugu Original', quality: 'HD 5.1', url: 'https://www.zee5.com/movies/details/rrr/0-0-1z5143398', logo: 'https://image.tmdb.org/t/p/w92/h56Jv4kI28mF1X141f39.jpg' },
-  ],
-  'kalki 2898 ad': [
-    { name: 'Netflix', type: 'stream', badge: 'Stream Hindi 4K Dolby Atmos', quality: '4K Ultra HD', url: 'https://www.netflix.com/title/81729013', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream Telugu/Tamil/Kan/Mal', quality: '4K UHD HDR', url: 'https://www.primevideo.com/detail/Kalki-2898-AD/0O7M7Y429N5G34S3W0D86TNYRN', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-  ],
-  'jawan': [
-    { name: 'Netflix', type: 'stream', badge: 'Stream Extended Cut 4K', quality: '4K Ultra HD', url: 'https://www.netflix.com/title/81695254', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-  ],
-  'stree 2': [
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream in 4K UHD', quality: '4K Ultra HD', url: 'https://www.primevideo.com/detail/Stree-2/0S2F8X4PQCXF6L6W8J8G9R7N3K', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-  ],
-  'baahubali 2: the conclusion': [
-    { name: 'Disney+ Hotstar', type: 'stream', badge: 'Stream in 4K', quality: '4K Dolby Vision', url: 'https://www.hotstar.com/in/movies/baahubali-2-the-conclusion/1770016137', logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
-    { name: 'Netflix', type: 'stream', badge: 'Stream Hindi Version', quality: 'Full HD', url: 'https://www.netflix.com/title/80203996', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-  ],
-  'animal': [
-    { name: 'Netflix', type: 'stream', badge: 'Stream Full Movie 4K', quality: '4K Ultra HD', url: 'https://www.netflix.com/title/81436990', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-  ],
-  'k.g.f: chapter 2': [
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream in 4K UHD', quality: '4K Ultra HD', url: 'https://www.primevideo.com/detail/KGF-Chapter-2/0S61J4O0G8M5Q4A1K3X7D9N0P2', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-  ],
-  'pushpa: the rise': [
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream in 4K UHD', quality: '4K Ultra HD', url: 'https://www.primevideo.com/detail/Pushpa-The-Rise-Hindi/0N9V6T7R4C6J9K2L1M4S5X8Z0Q', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-  ],
-  'dangal': [
-    { name: 'Netflix', type: 'stream', badge: 'Stream Full Movie', quality: 'Full HD', url: 'https://www.netflix.com/title/80166185', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-    { name: 'Apple TV', type: 'rent', badge: 'Rent / Buy in 4K', quality: '4K HDR', url: 'https://tv.apple.com/in/movie/dangal/umc.cmc.6wub5zcgq9c0o0f9k8x4r2', logo: 'https://image.tmdb.org/t/p/w92/peURlLlr8jggOwK53fJ5wdQl05y.jpg' },
-  ],
-  '3 idiots': [
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream Full Movie', quality: 'Full HD', url: 'https://www.primevideo.com/detail/3-Idiots/0J8M4K2L9N7P5Q1R3S6T0V8X2Y', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-    { name: 'SonyLIV', type: 'stream', badge: 'Stream on SonyLIV', quality: 'Full HD', url: 'https://www.sonyliv.com/movies/3-idiots-1000002341', logo: 'https://image.tmdb.org/t/p/w92/y0oW7yVnQG0p39f848.jpg' },
-  ],
-  'salaar': [
-    { name: 'Netflix', type: 'stream', badge: 'Stream in 4K Atmos', quality: '4K Ultra HD', url: 'https://www.netflix.com/title/81727768', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-    { name: 'Disney+ Hotstar', type: 'stream', badge: 'Stream Hindi Version', quality: '4K Dolby Vision', url: 'https://www.hotstar.com/in/movies/salaar-cease-fire/1260164319', logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
-  ],
-  'leo': [
-    { name: 'Netflix', type: 'stream', badge: 'Stream in 4K Dolby Atmos', quality: '4K Ultra HD', url: 'https://www.netflix.com/title/81639323', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-  ],
-  'inception': [
-    { name: 'Netflix', type: 'stream', badge: 'Stream in 4K', quality: '4K Ultra HD', url: 'https://www.netflix.com/title/70131314', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream with Prime', quality: 'Full HD', url: 'https://www.primevideo.com/detail/Inception/0NJ7S879G3S492P8N8B5F9Z7Q0', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-    { name: 'Apple TV', type: 'rent', badge: 'Rent / Buy in 4K Dolby Vision', quality: '4K Dolby Vision', url: 'https://tv.apple.com/in/movie/inception/umc.cmc.24vfgp7tq4v0y88m1x0k4r7l9', logo: 'https://image.tmdb.org/t/p/w92/peURlLlr8jggOwK53fJ5wdQl05y.jpg' },
-  ],
-  'interstellar': [
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream with Prime', quality: '4K Ultra HD', url: 'https://www.primevideo.com/detail/Interstellar/0Q6J8M9L5K4N3P2R1S0T7V8X9Y', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-    { name: 'JioCinema', type: 'stream', badge: 'Stream in HD', quality: 'Full HD', url: 'https://www.jiocinema.com/movies/interstellar/3748293/type/0/0', logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg' },
-    { name: 'Apple TV', type: 'rent', badge: 'Rent / Buy in 4K HDR', quality: '4K HDR', url: 'https://tv.apple.com/in/movie/interstellar/umc.cmc.4b8c9d0e1f2a3b4c5d6e7f8a9', logo: 'https://image.tmdb.org/t/p/w92/peURlLlr8jggOwK53fJ5wdQl05y.jpg' },
-  ],
-  'the dark knight': [
-    { name: 'Netflix', type: 'stream', badge: 'Stream in 4K UHD', quality: '4K Ultra HD', url: 'https://www.netflix.com/title/70079583', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream with Prime', quality: '4K Ultra HD', url: 'https://www.primevideo.com/detail/The-Dark-Knight/0M7K5J9L3N8P2R4S1T0V6X8Z9Y', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-    { name: 'JioCinema', type: 'stream', badge: 'Stream in HD', quality: 'Full HD', url: 'https://www.jiocinema.com/movies/the-dark-knight/3482910/type/0/0', logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg' },
-  ],
-  'avengers: endgame': [
-    { name: 'Disney+ Hotstar', type: 'stream', badge: 'Stream in IMAX Enhanced 4K', quality: '4K Dolby Vision IMAX', url: 'https://www.hotstar.com/in/movies/avengers-endgame/1260013556', logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
-  ],
-  'avengers: infinity war': [
-    { name: 'Disney+ Hotstar', type: 'stream', badge: 'Stream in IMAX Enhanced 4K', quality: '4K Dolby Vision IMAX', url: 'https://www.hotstar.com/in/movies/avengers-infinity-war/1660010670', logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
-  ],
-  'the matrix': [
-    { name: 'JioCinema', type: 'stream', badge: 'Stream in HD', quality: 'Full HD', url: 'https://www.jiocinema.com/movies/the-matrix/3492810/type/0/0', logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg' },
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream with Prime', quality: '4K Ultra HD', url: 'https://www.primevideo.com/detail/The-Matrix/0N7K5J9L3N8P2R4S1T0V6X8Z9Y', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-  ],
-  'parasite': [
-    { name: 'SonyLIV', type: 'stream', badge: 'Stream Full Movie', quality: 'Full HD', url: 'https://www.sonyliv.com/movies/parasite-1000004921', logo: 'https://image.tmdb.org/t/p/w92/y0oW7yVnQG0p39f848.jpg' },
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream with Prime', quality: '4K Ultra HD', url: 'https://www.primevideo.com/detail/Parasite/0T7K5J9L3N8P2R4S1T0V6X8Z9Y', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-  ],
-  'dune': [
-    { name: 'JioCinema', type: 'stream', badge: 'Stream in 4K UHD', quality: '4K Ultra HD', url: 'https://www.jiocinema.com/movies/dune/3948291/type/0/0', logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg' },
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream with Prime', quality: '4K Ultra HD', url: 'https://www.primevideo.com/detail/Dune/0O7M7Y429N5G34S3W0D86TNYRN', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-  ],
-  'oppenheimer': [
-    { name: 'JioCinema', type: 'stream', badge: 'Stream in 4K UHD', quality: '4K Ultra HD', url: 'https://www.jiocinema.com/movies/oppenheimer/3849201/type/0/0', logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg' },
-    { name: 'Amazon Prime Video', type: 'rent', badge: 'Rent / Buy in 4K HDR', quality: '4K HDR', url: 'https://www.primevideo.com/detail/Oppenheimer/0P7M7Y429N5G34S3W0D86TNYRN', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-  ],
-  'spider-man: no way home': [
-    { name: 'Netflix', type: 'stream', badge: 'Stream in 4K Dolby Atmos', quality: '4K Ultra HD', url: 'https://www.netflix.com/title/81466827', logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg' },
-    { name: 'SonyLIV', type: 'stream', badge: 'Stream on SonyLIV', quality: 'Full HD', url: 'https://www.sonyliv.com/movies/spider-man-no-way-home-1000005829', logo: 'https://image.tmdb.org/t/p/w92/y0oW7yVnQG0p39f848.jpg' },
-  ],
-  'the shawshank redemption': [
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream with Prime', quality: 'Full HD', url: 'https://www.primevideo.com/detail/The-Shawshank-Redemption/0R7M7Y429N5G34S3W0D86TNYRN', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-    { name: 'JioCinema', type: 'stream', badge: 'Stream in HD', quality: 'Full HD', url: 'https://www.jiocinema.com/movies/the-shawshank-redemption/3920194/type/0/0', logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg' },
-  ],
-  'fight club': [
-    { name: 'Disney+ Hotstar', type: 'stream', badge: 'Stream in HD', quality: 'Full HD', url: 'https://www.hotstar.com/in/movies/fight-club/1770000854', logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Stream with Prime', quality: 'Full HD', url: 'https://www.primevideo.com/detail/Fight-Club/0S8M7Y429N5G34S3W0D86TNYRN', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-  ],
-  'toxic': [
-    { name: 'BookMyShow (Theaters)', type: 'stream', badge: 'In Theaters 2025', quality: 'IMAX / Dolby Cinema', url: 'https://in.bookmyshow.com/explore/movies', logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg' },
-    { name: 'Amazon Prime Video', type: 'stream', badge: 'Official Post-Theatrical OTT', quality: '4K Ultra HD', url: 'https://www.primevideo.com/search/ref=atv_nb_sr?phrase=Toxic+Yash', logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg' },
-  ]
-};
-
-// ─── Generate Verified Watch Providers & Direct Links ─────────────────────────
+// ─── Generate Watch Providers & Direct Links ─────────────────────────────────
 export const generateWatchProviders = (
   title: string,
   tmdbProvidersData?: any
 ): { providers: WatchProvider[]; watchUrl?: string } => {
-  const cleanTitle = title.trim().toLowerCase();
-  const encTitle = encodeURIComponent(title);
-  let providers: WatchProvider[] = [];
+  const encTitle = encodeURIComponent(title.trim());
+  const providers: WatchProvider[] = [];
   let tmdbJustWatchLink: string | undefined = undefined;
 
-  // 1. Check if we have exact direct stream URLs for this movie title
-  for (const [key, directList] of Object.entries(DIRECT_STREAM_MAP)) {
-    if (cleanTitle === key || cleanTitle.includes(key) || key.includes(cleanTitle)) {
-      providers = [...directList];
-      break;
-    }
-  }
-
-  // 2. Check if TMDb gave provider results
   const results = tmdbProvidersData?.results;
   const localeData = results?.IN || results?.US || (results ? Object.values(results)[0] : null);
 
@@ -242,63 +107,9 @@ export const generateWatchProviders = (
     addTMDbList((localeData as any).buy, 'buy', 'Buy');
   }
 
-  // 3. Fallback / Standard verified direct streaming suite if none found
-  if (providers.length === 0) {
-    providers.push(
-      {
-        name: 'Netflix',
-        type: 'stream',
-        badge: 'Stream on Netflix',
-        quality: '4K Ultra HD',
-        url: `https://www.netflix.com/search?q=${encTitle}`,
-        logo: 'https://image.tmdb.org/t/p/w92/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg',
-      },
-      {
-        name: 'Amazon Prime Video',
-        type: 'stream',
-        badge: 'Stream with Prime',
-        quality: '4K Ultra HD',
-        url: `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encTitle}`,
-        logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg',
-      },
-      {
-        name: 'Disney+ Hotstar',
-        type: 'stream',
-        badge: 'Stream on Hotstar',
-        quality: '4K Dolby Vision',
-        url: `https://www.hotstar.com/in/explore?search_query=${encTitle}`,
-        logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg',
-      },
-      {
-        name: 'Apple TV',
-        type: 'rent',
-        badge: 'Watch on Apple TV',
-        quality: '4K HDR',
-        url: `https://tv.apple.com/search?term=${encTitle}`,
-        logo: 'https://image.tmdb.org/t/p/w92/peURlLlr8jggOwK53fJ5wdQl05y.jpg',
-      },
-      {
-        name: 'YouTube Movies',
-        type: 'rent',
-        badge: 'Watch / Rent Full Movie',
-        quality: 'Full HD',
-        url: `https://www.youtube.com/results?search_query=${encTitle}+full+movie`,
-        logo: 'https://image.tmdb.org/t/p/w92/oRQuR7451m1z2FzE9oq1B3Xw9aJ.jpg',
-      },
-      {
-        name: 'JioCinema',
-        type: 'free',
-        badge: 'Stream on JioCinema',
-        quality: 'HD Stream',
-        url: `https://www.jiocinema.com/search/${encTitle}`,
-        logo: 'https://image.tmdb.org/t/p/w92/z6uq74n7bT0i1qW5Y2L09aW1Q7Y.jpg',
-      }
-    );
-  }
-
   return {
     providers,
-    watchUrl: tmdbJustWatchLink || `https://www.google.com/search?q=watch+${encTitle}+movie+online+direct`,
+    watchUrl: tmdbJustWatchLink,
   };
 };
 
@@ -332,18 +143,71 @@ const parseRuntime = (r?: string): number => {
   return m ? parseInt(m[0]) : 0;
 };
 
-// Pick the best YouTube trailer key from a TMDB videos array
-const pickTrailerKey = (videos?: any[]): string => {
-  if (!videos?.length) return '';
-  // Prefer official trailer, then any trailer, then any YouTube video
-  const official = videos.find(v => v.type === 'Trailer' && v.site === 'YouTube' && v.official);
-  const anyTrailer = videos.find(v => v.type === 'Trailer' && v.site === 'YouTube');
-  const anyVideo  = videos.find(v => v.site === 'YouTube');
-  const chosen = official || anyTrailer || anyVideo;
-  // Return embed URL with safe params (no autoplay, no related videos from other channels)
-  return chosen
-    ? `https://www.youtube.com/embed/${chosen.key}?rel=0&modestbranding=1`
-    : '';
+
+
+// Strictly pick authentic theatrical trailer (never random interviews, audio promos, or clips)
+const pickTrailerKey = (videos?: any[], _movieTitle?: string): string => {
+  if (Array.isArray(videos) && videos.length > 0) {
+    const yt = videos.filter(v => v.site === 'YouTube' && v.key);
+    const isExcluded = (name?: string) => {
+      const n = (name || '').toLowerCase();
+      return (
+        n.includes('teaser') ||
+        n.includes('glimpse') ||
+        n.includes('title reveal') ||
+        n.includes('sound of') ||
+        n.includes('motion poster') ||
+        n.includes('theme') ||
+        n.includes('song') ||
+        n.includes('audio') ||
+        n.includes('behind the scenes') ||
+        n.includes('making') ||
+        n.includes('first look')
+      );
+    };
+
+    const official = yt.find(v => v.type === 'Trailer' && (v.official || v.name?.toLowerCase().includes('official')) && !isExcluded(v.name));
+    if (official) {
+      return `https://www.youtube.com/embed/${official.key}?rel=0&modestbranding=1&enablejsapi=1`;
+    }
+
+    const anyTrailer = yt.find(v => v.type === 'Trailer' && !isExcluded(v.name));
+    if (anyTrailer) {
+      return `https://www.youtube.com/embed/${anyTrailer.key}?rel=0&modestbranding=1&enablejsapi=1`;
+    }
+  }
+
+  return '';
+};
+
+export const formatImdbVoteCount = (count?: number | string): string | undefined => {
+  if (!count) return undefined;
+  const num = typeof count === 'number' ? count : parseInt(String(count).replace(/[^0-9]/g, ''), 10);
+  if (isNaN(num) || num <= 0) return undefined;
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}M votes`;
+  if (num >= 10000) return `${Math.round(num / 1000)}K votes`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1).replace(/\.0$/, '')}K votes`;
+  return `${num} votes`;
+};
+
+export const fetchLiveImdbRatingForMovie = async (
+  imdbId: string
+): Promise<{ rating?: string; votes?: string; numericRating?: number } | null> => {
+  if (!imdbId || !/^tt\d{7,10}$/.test(imdbId)) return null;
+  try {
+    const res = await fetch(`/api/imdb-rating?id=${encodeURIComponent(imdbId)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.ok) {
+        return {
+          rating: data.rating,
+          votes: data.votes,
+          numericRating: data.numericRating
+        };
+      }
+    }
+  } catch {}
+  return null;
 };
 
 // ─── Parse OMDb response → Movie ──────────────────────────────────────────────
@@ -352,7 +216,10 @@ const parseOMDb = (data: any, index: number): Movie | null => {
   const rawId = data.imdbID?.replace('tt', '');
   const id = rawId ? parseInt(rawId) || (Date.now() + index) : Date.now() + index;
   const genre = data.Genre || 'Drama';
-  const rating = data.imdbRating && data.imdbRating !== 'N/A' ? parseFloat(data.imdbRating) : 7.0;
+  const hasValidImdb = data.imdbRating && data.imdbRating !== 'N/A';
+  const rating = hasValidImdb ? parseFloat(data.imdbRating) : 7.0;
+  const imdbRating = hasValidImdb ? String(data.imdbRating) : undefined;
+  const imdbVotes = data.imdbVotes && data.imdbVotes !== 'N/A' ? formatImdbVoteCount(data.imdbVotes) : undefined;
   const poster = upgradePosterUrl(data.Poster);
   const tagline = data.Awards && data.Awards !== 'N/A'
     ? data.Awards.split('.')[0]
@@ -366,7 +233,11 @@ const parseOMDb = (data: any, index: number): Movie | null => {
   const { providers, watchUrl } = generateWatchProviders(data.Title);
 
   return {
-    id, t: data.Title,
+    id,
+    imdbId: data.imdbID,
+    imdbRating,
+    imdbVotes,
+    t: data.Title,
     y: parseInt(data.Year) || 0,
     g: genre, r: rating,
     runtime: parseRuntime(data.Runtime),
@@ -379,7 +250,7 @@ const parseOMDb = (data: any, index: number): Movie | null => {
     motif: genreToMotif(genre),
     img: poster,
     trailerUrl: '', // populated separately via TMDB
-    reviews: mockReviews,
+    reviews: [],
     watchProviders: providers,
     watchUrl,
   };
@@ -394,7 +265,9 @@ const parseTMDb = (data: any, index: number): Movie | null => {
   const genre = data.genres?.[0]?.name
     || (data.genre_ids?.[0] ? tmdbGenreName(data.genre_ids[0]) : 'Drama');
 
-  const poster = data.poster_path ? `${TMDB_IMG}${data.poster_path}` : undefined;
+  const poster = data.poster_path
+    ? formatPosterUrl(data.poster_path, 'w500')
+    : (data.backdrop_path ? formatPosterUrl(data.backdrop_path, 'w500') : undefined);
   const year   = data.release_date ? parseInt(data.release_date.split('-')[0]) : 0;
   const rating = data.vote_average ? parseFloat(data.vote_average.toFixed(1)) : 7.0;
   const director = data.credits?.crew?.find((c: any) => c.job === 'Director')?.name || 'Unknown';
@@ -411,8 +284,22 @@ const parseTMDb = (data: any, index: number): Movie | null => {
     data['watch/providers'] || data.watch_providers
   );
 
+  const imdbId = data.imdb_id || data.external_ids?.imdb_id || undefined;
+
+  const rawReviews = data.reviews?.results || [];
+  const reviews: Review[] = Array.isArray(rawReviews) && rawReviews.length > 0
+    ? rawReviews.slice(0, 10).map((r: any) => ({
+        author: r.author || r.author_details?.username || 'Verified Critic',
+        text: (r.content || '').replace(/\r\n/g, '\n').trim(),
+        rating: r.author_details?.rating
+          ? Math.max(1, Math.min(5, Math.round(r.author_details.rating / 2)))
+          : (Math.max(1, Math.min(5, Math.round(rating / 2))) || 4),
+      }))
+    : [];
+
   return {
     id: data.id || Date.now() + index,
+    imdbId,
     t: data.title, y: year, g: genre, genre_ids, r: rating,
     runtime: data.runtime || 0,
     dir: director,
@@ -424,8 +311,8 @@ const parseTMDb = (data: any, index: number): Movie | null => {
     motif: genreToMotif(genre),
     lang: data.original_language || undefined,
     img: poster,
-    trailerUrl: pickTrailerKey(data.videos?.results),
-    reviews: mockReviews,
+    trailerUrl: pickTrailerKey(data.videos?.results, data.title) || pickCleanTrailerKey(data.videos?.results),
+    reviews,
     watchProviders: providers,
     watchUrl,
   };
@@ -437,49 +324,6 @@ const sessionCache = new Map<string, Movie | null>();
 
 // ─── Fetch a single movie by IMDB ID via OMDb + TMDB trailer ─────────────────
 export const fetchMovieById = async (imdbId: string, index: number): Promise<Movie | null> => {
-  if (imdbId === 'toxic_mock') {
-    const toxicMovie: Movie = {
-      id: 9999999,
-      t: 'Toxic',
-      y: 2025,
-      g: 'Action, Thriller, Drama',
-      r: 9.5,
-      runtime: 165,
-      dir: 'Geetu Mohandas',
-      tagline: 'A Fairy Tale for Grown-ups',
-      blurb: 'An upcoming high-octane action thriller starring Rocking Star Yash. Set in the dark underbelly of the drug mafia, this intense cinematic experience promises unprecedented scale and brutal action sequences.',
-      mood: ['thrilling', 'dark', 'epic'],
-      motif: 'action',
-      img: 'https://m.media-amazon.com/images/M/MV5BNWE1ZTYwYTgtODMwNi00ODFjLTgzZmYtNmEyZjcyZjVjMDllXkEyXkFqcGc@._V1_FMjpg_UX1200_.jpg',
-      trailerUrl: 'https://www.youtube.com/watch?v=kYJ4-U6g0-o',
-      reviews: mockReviews,
-      isAdult: true,
-      castMembers: [
-        { id: 1, name: 'Yash', character: 'Toxic', photo: 'https://image.tmdb.org/t/p/w185/8Q6a3K4q7x3hD1N4x5p4J5s8g2.jpg' },
-        { id: 2, name: 'Kiara Advani', character: 'Lead', photo: 'https://image.tmdb.org/t/p/w185/7t5Xp4x2K6x2g6H9j3K8x2N8x5.jpg' }
-      ],
-      watchProviders: [
-        {
-          name: 'BookMyShow (Theaters)',
-          type: 'stream',
-          badge: 'In Theaters 2025',
-          quality: 'IMAX / Dolby Cinema',
-          url: 'https://in.bookmyshow.com/explore/movies',
-          logo: 'https://image.tmdb.org/t/p/w92/7rwgEs15tFwyR9NPQ5vpKi0AmmQ.jpg',
-        },
-        {
-          name: 'Amazon Prime Video',
-          type: 'stream',
-          badge: 'Post-Theatrical OTT',
-          quality: '4K Ultra HD',
-          url: 'https://www.primevideo.com/search/ref=atv_nb_sr?phrase=Toxic+Yash',
-          logo: 'https://image.tmdb.org/t/p/w92/dQeAar5H991VYporEjUspolDarG.jpg',
-        }
-      ]
-    };
-    return toxicMovie;
-  }
-
   const cacheKey = `omdb_${imdbId}`;
   if (sessionCache.has(cacheKey)) return sessionCache.get(cacheKey) ?? null;
 
@@ -502,7 +346,7 @@ export const fetchMovieById = async (imdbId: string, index: number): Promise<Mov
           const tmdbId: number | undefined = findData.movie_results?.[0]?.id;
           if (tmdbId) {
             const detailRes = await fetch(
-              `${TMDB_URL}/movie/${tmdbId}?api_key=${TMDB_KEY}&append_to_response=videos,credits,watch/providers`
+              `${TMDB_URL}/movie/${tmdbId}?api_key=${TMDB_KEY}&append_to_response=videos,credits,watch/providers,reviews`
             );
             if (detailRes.ok) {
               const detailData = await detailRes.json();
@@ -511,7 +355,7 @@ export const fetchMovieById = async (imdbId: string, index: number): Promise<Mov
               if (detailData.tagline)  movie.tagline = detailData.tagline;
               // ✅ Override with TMDB HD poster (w780) — always sharper than Amazon thumbnail
               if (detailData.poster_path) {
-                movie.img = `${TMDB_IMG}${detailData.poster_path}`;
+                movie.img = formatPosterUrl(detailData.poster_path, 'w500');
               }
               if (detailData.credits?.cast?.length) {
                 const members: CastMember[] = detailData.credits.cast.slice(0, 12).map((c: any) => ({
@@ -527,12 +371,22 @@ export const fetchMovieById = async (imdbId: string, index: number): Promise<Mov
                 const dirObj = detailData.credits.crew.find((c: any) => c.job === 'Director');
                 if (dirObj) movie.dir = dirObj.name;
               }
-              movie.trailerUrl = pickTrailerKey(detailData.videos?.results);
+              movie.trailerUrl = pickTrailerKey(detailData.videos?.results, movie.t);
 
               if (detailData['watch/providers']) {
                 const { providers, watchUrl } = generateWatchProviders(movie.t, detailData['watch/providers']);
                 if (providers.length > 0) movie.watchProviders = providers;
                 if (watchUrl) movie.watchUrl = watchUrl;
+              }
+
+              if (Array.isArray(detailData.reviews?.results) && detailData.reviews.results.length > 0) {
+                movie.reviews = detailData.reviews.results.slice(0, 10).map((r: any) => ({
+                  author: r.author || r.author_details?.username || 'Verified Critic',
+                  text: (r.content || '').replace(/\r\n/g, '\n').trim(),
+                  rating: r.author_details?.rating
+                    ? Math.max(1, Math.min(5, Math.round(r.author_details.rating / 2)))
+                    : 4,
+                }));
               }
             }
           }
@@ -542,6 +396,17 @@ export const fetchMovieById = async (imdbId: string, index: number): Promise<Mov
       }
     }
 
+    // 3. Enrich with authentic live IMDb score & votes asynchronously in background (do not block)
+    if (movie.imdbId) {
+      fetchLiveImdbRatingForMovie(movie.imdbId).then(live => {
+        if (live && live.numericRating) {
+          movie.imdbRating = live.rating;
+          movie.imdbVotes = live.votes || movie.imdbVotes;
+          movie.r = live.numericRating;
+        }
+      }).catch(() => {});
+    }
+
     sessionCache.set(cacheKey, movie);
     return movie;
   } catch {
@@ -549,19 +414,49 @@ export const fetchMovieById = async (imdbId: string, index: number): Promise<Mov
   }
 };
 
-// ─── Fetch a single TMDB movie by its native TMDB ID (used in search) ─────────
-const fetchTMDBMovieById = async (tmdbId: number, index: number): Promise<Movie | null> => {
+// ─── Fetch a single TMDB movie by its native TMDB ID (used in search & modal enrichment) ─────────
+export const fetchTMDBMovieById = async (tmdbId: number | string, index: number = 0): Promise<Movie | null> => {
   const cacheKey = `tmdb_${tmdbId}`;
   if (sessionCache.has(cacheKey)) return sessionCache.get(cacheKey) ?? null;
 
   try {
+    let resolvedId: number | null = null;
+    if (typeof tmdbId === 'string' && tmdbId.startsWith('tt')) {
+      const findRes = await fetch(`${TMDB_URL}/find/${tmdbId}?api_key=${TMDB_KEY}&external_source=imdb_id`);
+      if (findRes.ok) {
+        const findData = await findRes.json();
+        const found = findData.movie_results?.[0];
+        if (found?.id) resolvedId = found.id;
+      }
+    } else {
+      resolvedId = typeof tmdbId === 'number' ? tmdbId : parseInt(String(tmdbId), 10);
+    }
+
+    if (!resolvedId || isNaN(resolvedId)) {
+      if (typeof tmdbId === 'string' && tmdbId.startsWith('tt')) {
+        return await fetchMovieById(tmdbId, index);
+      }
+      return null;
+    }
+
     const res = await fetch(
-      `${TMDB_URL}/movie/${tmdbId}?api_key=${TMDB_KEY}&append_to_response=videos,credits,watch/providers`
+      `${TMDB_URL}/movie/${resolvedId}?api_key=${TMDB_KEY}&append_to_response=external_ids,videos,credits,watch/providers,reviews`
     );
     if (!res.ok) throw new Error(`TMDB detail ${res.status}`);
     const data = await res.json();
     const movie = parseTMDb(data, index);
     if (!movie) { sessionCache.set(cacheKey, null); return null; }
+
+    // Enrich IMDb rating asynchronously in background (instant non-blocking modal display)
+    if (movie.imdbId) {
+      fetchLiveImdbRatingForMovie(movie.imdbId).then(live => {
+        if (live && live.numericRating) {
+          movie.imdbRating = live.rating;
+          movie.imdbVotes = live.votes;
+          movie.r = live.numericRating;
+        }
+      }).catch(() => {});
+    }
 
     sessionCache.set(cacheKey, movie);
     return movie;
@@ -614,7 +509,7 @@ export const fetchActorFilmography = async (actorIdOrName: number | string): Pro
       const genre = m.genre_ids?.[0] ? tmdbGenreName(m.genre_ids[0]) : 'Drama';
       const year = m.release_date ? parseInt(m.release_date.split('-')[0]) : 0;
       const rating = m.vote_average ? parseFloat(m.vote_average.toFixed(1)) : 7.0;
-      const poster = m.poster_path ? `${TMDB_IMG}${m.poster_path}` : undefined;
+      const poster = m.poster_path ? formatPosterUrl(m.poster_path, 'w500') : undefined;
 
       return {
         id: m.id || Date.now() + idx,
@@ -630,7 +525,7 @@ export const fetchActorFilmography = async (actorIdOrName: number | string): Pro
         motif: genreToMotif(genre),
         img: poster,
         trailerUrl: '',
-        reviews: mockReviews,
+        reviews: [],
       };
     });
 
@@ -660,9 +555,22 @@ const fetchBatch = async (ids: string[]): Promise<Movie[]> => {
 };
 
 // ─── sessionStorage catalog cache (cleared on version bump) ──────────────────
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v7_live_imdb';
+let hasCleanedStaleSessionCache = false;
+
 const loadCached = (key: string): Movie[] | null => {
   try {
+    if (!hasCleanedStaleSessionCache) {
+      hasCleanedStaleSessionCache = true;
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (k && !k.endsWith(`_${CACHE_VERSION}`)) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => sessionStorage.removeItem(k));
+    }
     const raw = sessionStorage.getItem(`${key}_${CACHE_VERSION}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Movie[];
@@ -681,79 +589,302 @@ const saveCache = (key: string, data: Movie[]): void => {
   }
 };
 
+// Unified Date Tracker: Tracks current year, month, and day (strictly current year, rejecting previous years)
+export const getCurrentDateTracking = () => {
+  const now = new Date();
+  const year = now.getFullYear(); // 2026
+  const month = now.getMonth() + 1; // 11
+  const day = now.getDate(); // 3
+  const monthPadded = String(month).padStart(2, '0');
+  const dayPadded = String(day).padStart(2, '0');
+  const todayStr = `${year}-${monthPadded}-${dayPadded}`;
+  const startOfYear = `${year}-01-01`;
+  const endOfYear = `${year}-12-31`;
+  return { year, month, day, todayStr, startOfYear, endOfYear };
+};
+
+// ─── Direct Discover Parser: Converts raw TMDB discover items instantly with 100% verified posters ───
+export const parseTMDBDiscoverMovie = (m: any, index: number): Movie => {
+  const genre = m.genre_ids?.[0] ? tmdbGenreName(m.genre_ids[0]) : (m.genres?.[0]?.name || 'Drama');
+  const year = m.release_date ? (parseInt(m.release_date.split('-')[0]) || 0) : (m.first_air_date ? parseInt(m.first_air_date.split('-')[0]) || 0 : 0);
+  const rating = m.vote_average ? parseFloat(m.vote_average.toFixed(1)) : 7.5;
+  const poster = m.poster_path
+    ? formatPosterUrl(m.poster_path, 'w500')
+    : (m.backdrop_path ? formatPosterUrl(m.backdrop_path, 'w500') : '');
+  const { providers, watchUrl } = generateWatchProviders(m.title || '');
+  return {
+    id: m.id || Date.now() + index,
+    t: m.title || 'Untitled',
+    y: year,
+    g: genre,
+    genre_ids: m.genre_ids || [],
+    r: rating,
+    runtime: m.runtime || 120,
+    dir: m.director || m.dir || 'Director',
+    tagline: m.tagline || `${genre}${year ? ` · ${year}` : ''}`,
+    blurb: m.overview || 'Emotionally compelling cinematic story.',
+    mood: genreToMood(genre),
+    motif: genreToMotif(genre),
+    lang: m.original_language || undefined,
+    img: poster,
+    trailerUrl: '',
+    reviews: [],
+    watchProviders: providers,
+    watchUrl,
+  };
+};
+
 export const fetchIndiaTrendingMovies = async (): Promise<Movie[]> => {
-  const cached = loadCached('cx_india_trending');
-  if (cached) return cached;
+  const { year, todayStr } = getCurrentDateTracking();
+  const cacheKey = `cx_india_trending_${todayStr}_v2026_strict_v3`;
+  const cached = loadCached(cacheKey);
+  if (cached && cached.length > 0) return cached;
 
   if (TMDB_ENABLED) {
     try {
       const res = await fetch(
-        `${TMDB_URL}/discover/movie?api_key=${TMDB_KEY}&with_origin_country=IN&sort_by=popularity.desc&vote_count.gte=30&page=1`
+        `${TMDB_URL}/discover/movie?api_key=${TMDB_KEY}&with_origin_country=IN&primary_release_year=${year}&sort_by=popularity.desc&page=1`
       );
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.results) && data.results.length > 0) {
-          const ids: number[] = data.results.slice(0, 12).map((m: any) => m.id);
-          const settled = await Promise.allSettled(ids.map((id, i) => fetchTMDBMovieById(id, i)));
-          const movies = settled
-            .filter((r): r is PromiseFulfilledResult<Movie> => r.status === 'fulfilled' && r.value !== null)
-            .map(r => r.value);
+          // Strictly require real poster artwork: eliminates clapperboards
+          const valid = data.results.filter(
+            (m: any) => m && m.poster_path && m.title && m.t !== 'Brindavihari' && m.t !== 'Bhairathi Ranagal'
+          );
+          const movies = valid.slice(0, 14).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
           if (movies.length > 0) {
-            saveCache('cx_india_trending', movies);
+            saveCache(cacheKey, movies);
             return movies;
           }
         }
       }
     } catch (e) {
-      console.warn('TMDB India trending fetch failed, falling back to curated list:', e);
+      console.warn('TMDB India 2026 fetch error:', e);
     }
   }
 
-  const data = await fetchBatch(INDIA_TRENDING_IDS);
-  saveCache('cx_india_trending', data);
-  return data;
+  return [];
 };
 
 export const fetchTrendingMovies = async (): Promise<Movie[]> => {
-  const cached = loadCached('cx_trending');
-  if (cached) return cached;
-  const data = await fetchBatch(TRENDING_IDS);
-  saveCache('cx_trending', data);
-  return data;
+  const { year, todayStr } = getCurrentDateTracking();
+  const cacheKey = `cx_trending_${todayStr}_v2026_strict_v3`;
+  const cached = loadCached(cacheKey);
+  if (cached && cached.length > 0) return cached;
+
+  if (TMDB_ENABLED) {
+    try {
+      const res = await fetch(
+        `${TMDB_URL}/discover/movie?api_key=${TMDB_KEY}&primary_release_year=${year}&sort_by=popularity.desc&page=1`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.results) && data.results.length > 0) {
+          const valid = data.results.filter((m: any) => m && m.poster_path && m.title);
+          const movies = valid.slice(0, 14).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
+          if (movies.length > 0) {
+            saveCache(cacheKey, movies);
+            return movies;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('TMDB Global 2026 fetch error:', e);
+    }
+  }
+
+  return [];
 };
 
 export const fetchScifiMovies = async (): Promise<Movie[]> => {
-  const cached = loadCached('cx_scifi');
-  if (cached) return cached;
-  const data = await fetchBatch(SCIFI_IDS);
-  saveCache('cx_scifi', data);
-  return data;
+  const { year, todayStr } = getCurrentDateTracking();
+  const cacheKey = `cx_scifi_${todayStr}_v2026_strict_v3`;
+  const cached = loadCached(cacheKey);
+  if (cached && cached.length > 0) return cached;
+
+  if (TMDB_ENABLED) {
+    try {
+      const res = await fetch(
+        `${TMDB_URL}/discover/movie?api_key=${TMDB_KEY}&primary_release_year=${year}&with_genres=878&sort_by=popularity.desc&page=1`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.results) && data.results.length > 0) {
+          const valid = data.results.filter((m: any) => m && m.poster_path && m.title);
+          const movies = valid.slice(0, 14).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
+          if (movies.length > 0) {
+            saveCache(cacheKey, movies);
+            return movies;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('TMDB Sci-Fi 2026 fetch error:', e);
+    }
+  }
+
+  return [];
 };
 
 export const fetchRomanceDramaMovies = async (): Promise<Movie[]> => {
-  const cached = loadCached('cx_drama');
-  if (cached) return cached;
-  const data = await fetchBatch(ROMANCE_DRAMA_IDS);
-  saveCache('cx_drama', data);
-  return data;
+  const { year, todayStr } = getCurrentDateTracking();
+  const cacheKey = `cx_drama_${todayStr}_v2026_strict_v3`;
+  const cached = loadCached(cacheKey);
+  if (cached && cached.length > 0) return cached;
+
+  if (TMDB_ENABLED) {
+    try {
+      // 1. Fetch 2026 Romance / Drama with verified posters
+      const res = await fetch(
+        `${TMDB_URL}/discover/movie?api_key=${TMDB_KEY}&primary_release_year=${year}&with_genres=18,10749&sort_by=popularity.desc&page=1`
+      );
+      let validItems: any[] = [];
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.results)) {
+          // Strictly ensure real poster exists — NEVER allow clapperboards
+          validItems = data.results.filter((m: any) => m && m.poster_path && m.title);
+        }
+      }
+
+      // 2. If 2026 romance has fewer than 10 verified poster movies, complement with popular acclaimed romance/drama
+      if (validItems.length < 12) {
+        try {
+          const resPopular = await fetch(
+            `${TMDB_URL}/discover/movie?api_key=${TMDB_KEY}&with_genres=18,10749&sort_by=popularity.desc&vote_count.gte=100&page=1`
+          );
+          if (resPopular.ok) {
+            const popData = await resPopular.json();
+            if (Array.isArray(popData.results)) {
+              for (const m of popData.results) {
+                if (m && m.poster_path && !validItems.some((ex) => ex.id === m.id)) {
+                  validItems.push(m);
+                  if (validItems.length >= 14) break;
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+
+      const movies = validItems.slice(0, 14).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
+      if (movies.length > 0) {
+        saveCache(cacheKey, movies);
+        return movies;
+      }
+    } catch (e) {
+      console.warn('TMDB Drama/Romance fetch error:', e);
+    }
+  }
+
+  return [];
 };
 
-// ─── TMDB keyword search ──────────────────────────────────────────────────────
+// ─── TMDB keyword & creator search ──────────────────────────────────────────
 const tmdbSearch = async (query: string): Promise<Movie[]> => {
-  const res = await fetch(
-    `${TMDB_URL}/search/movie?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=1`
-  );
-  if (!res.ok) throw new Error(`TMDB search ${res.status}`);
-  const data = await res.json();
-  if (!Array.isArray(data.results) || data.results.length === 0) return [];
+  const q = query.trim();
+  if (!q) return [];
 
-  // Fetch full details (including videos) for each result
-  const ids: number[] = data.results.slice(0, 12).map((m: any) => m.id);
-  const settled = await Promise.allSettled(ids.map((id, i) => fetchTMDBMovieById(id, i)));
-  return settled
-    .filter((r): r is PromiseFulfilledResult<Movie> =>
-      r.status === 'fulfilled' && r.value !== null)
-    .map(r => r.value);
+  // 1. Concurrently search movies and persons (directors/actors)
+  const [movieRes, personRes] = await Promise.all([
+    fetch(
+      `${TMDB_URL}/search/movie?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}&include_adult=false&language=en-US&page=1`
+    ).catch(() => null),
+    fetch(
+      `${TMDB_URL}/search/person?api_key=${TMDB_KEY}&query=${encodeURIComponent(q)}&include_adult=false&page=1`
+    ).catch(() => null)
+  ]);
+
+  const rawCandidateMovies: any[] = [];
+  const seenIds = new Set<number>();
+
+  // 2. If a prominent person is matched (Director / Actor), add their top celebrated films first
+  if (personRes && personRes.ok) {
+    try {
+      const personData = await personRes.json();
+      const topPerson = personData.results?.[0];
+      const qLower = q.toLowerCase();
+      if (topPerson && (topPerson.popularity > 2.5 || topPerson.name.toLowerCase().includes(qLower))) {
+        const creditsRes = await fetch(`${TMDB_URL}/person/${topPerson.id}/movie_credits?api_key=${TMDB_KEY}`);
+        if (creditsRes.ok) {
+          const creditsData = await creditsRes.json();
+          const allWorks = [
+            ...(Array.isArray(creditsData.cast) ? creditsData.cast : []),
+            ...(Array.isArray(creditsData.crew) ? creditsData.crew.filter((c: any) => c.job === 'Director') : [])
+          ];
+
+          // Filter strictly for verified poster artwork and notable vote count
+          const validWorks = allWorks
+            .filter((m: any) => m && m.title && m.poster_path && (m.vote_count || 0) >= 15)
+            .sort((a: any, b: any) => (b.vote_count || 0) - (a.vote_count || 0));
+
+          for (const m of validWorks) {
+            if (!seenIds.has(m.id)) {
+              seenIds.add(m.id);
+              if (topPerson.known_for_department === 'Directing') {
+                m.director = topPerson.name;
+              }
+              rawCandidateMovies.push(m);
+              if (rawCandidateMovies.length >= 10) break;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Person credits search failed:', e);
+    }
+  }
+
+  // 3. Process direct movie title matches
+  if (movieRes && movieRes.ok) {
+    try {
+      const movieData = await movieRes.json();
+      if (Array.isArray(movieData.results)) {
+        // Strictly filter out zero-poster, fake unreleased placeholder, or 0-vote fan entries
+        const validMovies = movieData.results.filter((m: any) => {
+          if (!m || !m.title || !m.poster_path) return false;
+          const votes = m.vote_count || 0;
+          const pop = m.popularity || 0;
+          return votes > 0 || pop > 5;
+        });
+
+        const qLower = q.toLowerCase();
+        validMovies.sort((a: any, b: any) => {
+          const aTitle = a.title.toLowerCase();
+          const bTitle = b.title.toLowerCase();
+          const aExact = aTitle === qLower;
+          const bExact = bTitle === qLower;
+
+          if (aExact && !bExact && (a.vote_count || 0) > 50) return -1;
+          if (!aExact && bExact && (b.vote_count || 0) > 50) return 1;
+
+          const aStarts = aTitle.startsWith(qLower);
+          const bStarts = bTitle.startsWith(qLower);
+          if (aStarts && !bStarts && (a.vote_count || 0) > 20) return -1;
+          if (!aStarts && bStarts && (b.vote_count || 0) > 20) return 1;
+
+          const aScore = (a.vote_count || 0) + (a.popularity || 0) * 80;
+          const bScore = (b.vote_count || 0) + (b.popularity || 0) * 80;
+          return bScore - aScore;
+        });
+
+        for (const m of validMovies) {
+          if (!seenIds.has(m.id)) {
+            seenIds.add(m.id);
+            rawCandidateMovies.push(m);
+            if (rawCandidateMovies.length >= 24) break;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Movie search parse failed:', e);
+    }
+  }
+
+  if (rawCandidateMovies.length === 0) return [];
+
+  return rawCandidateMovies.map((m, i) => parseTMDBDiscoverMovie(m, i));
 };
 
 // ─── OMDb keyword search fallback ────────────────────────────────────────────
@@ -764,7 +895,14 @@ const omdbSearch = async (query: string): Promise<Movie[]> => {
   if (!res.ok) throw new Error(`OMDb search ${res.status}`);
   const data = await res.json();
   if (!Array.isArray(data.Search) || data.Search.length === 0) return [];
-  return fetchBatch(data.Search.slice(0, 10).map((m: any) => m.imdbID));
+
+  // Filter out any entries with missing poster or invalid titles
+  const valid = data.Search.filter(
+    (m: any) => m && m.imdbID && m.Title && m.Poster && m.Poster !== 'N/A'
+  );
+  if (valid.length === 0) return [];
+
+  return fetchBatch(valid.slice(0, 10).map((m: any) => m.imdbID));
 };
 
 // ─── Main search export ───────────────────────────────────────────────────────
@@ -807,7 +945,7 @@ export const fetchByGenreAndLanguage = async (
     sort_by: 'popularity.desc',
     include_adult: 'false',
     page: String(page),
-    'vote_count.gte': '30',
+    'vote_count.gte': '20',
   });
   if (genreId > 0)    params.set('with_genres', String(genreId));
   if (langCode)       params.set('with_original_language', langCode);
@@ -824,15 +962,10 @@ export const fetchByGenreAndLanguage = async (
     const data = await res.json();
     if (!Array.isArray(data.results) || data.results.length === 0) return [];
 
-    // Fetch full detail+videos for each result in parallel
-    const ids: number[] = data.results.slice(0, 20).map((m: any) => m.id);
-    const settled = await Promise.allSettled(
-      ids.map((id, i) => fetchTMDBMovieById(id, i))
-    );
-    return settled
-      .filter((r): r is PromiseFulfilledResult<Movie> =>
-        r.status === 'fulfilled' && r.value !== null)
-      .map(r => r.value);
+    // Filter strictly for verified poster artwork
+    const valid = data.results.filter((m: any) => m && m.poster_path && m.title);
+    const movies = valid.slice(0, 20).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
+    return movies;
   } catch (e) {
     console.warn('Discover fetch failed:', e);
     return [];
@@ -846,7 +979,7 @@ export const fetchTopRatedMovies = async (page = 1): Promise<Movie[]> => {
   const params = new URLSearchParams({
     api_key: TMDB_KEY,
     sort_by: 'vote_average.desc',
-    'vote_count.gte': '3000', // Ensure they are actually popular/top-rated
+    'vote_count.gte': '2000', // Ensure they are actually popular/top-rated
     include_adult: 'false',
     page: String(page),
   });
@@ -857,15 +990,9 @@ export const fetchTopRatedMovies = async (page = 1): Promise<Movie[]> => {
     const data = await res.json();
     if (!Array.isArray(data.results) || data.results.length === 0) return [];
 
-    // Fetch full detail+videos for each result in parallel
-    const ids: number[] = data.results.slice(0, 20).map((m: any) => m.id);
-    const settled = await Promise.allSettled(
-      ids.map((id, i) => fetchTMDBMovieById(id, i))
-    );
-    return settled
-      .filter((r): r is PromiseFulfilledResult<Movie> =>
-        r.status === 'fulfilled' && r.value !== null)
-      .map(r => r.value);
+    const valid = data.results.filter((m: any) => m && m.poster_path && m.title);
+    const movies = valid.slice(0, 20).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
+    return movies;
   } catch (e) {
     console.warn('TopRated fetch failed:', e);
     return [];
@@ -873,45 +1000,57 @@ export const fetchTopRatedMovies = async (page = 1): Promise<Movie[]> => {
 };
 
 // ─── For You: personalized recommendations based on top genres & actors ──────────
-export const fetchForYouMovies = async (genreIds: number[], actorIds: number[], page = 1): Promise<Movie[]> => {
-  if (!TMDB_ENABLED || (genreIds.length === 0 && actorIds.length === 0)) return [];
-
-  const fetches = [];
-
-  // 1. Fetch by top genres
-  if (genreIds.length > 0) {
-    const genresStr = genreIds.join('|');
-    const params = new URLSearchParams({
-      api_key: TMDB_KEY,
-      sort_by: 'popularity.desc',
-      include_adult: 'false',
-      page: String(page),
-      with_genres: genresStr,
-      'vote_count.gte': '50',
-    });
-    fetches.push(fetch(`${TMDB_URL}/discover/movie?${params}`).then(r => r.json()));
-  }
-
-  // 2. Fetch by top actors
-  if (actorIds.length > 0) {
-    const castStr = actorIds.join('|');
-    const params = new URLSearchParams({
-      api_key: TMDB_KEY,
-      sort_by: 'popularity.desc',
-      include_adult: 'false',
-      page: String(page),
-      with_cast: castStr,
-    });
-    fetches.push(fetch(`${TMDB_URL}/discover/movie?${params}`).then(r => r.json()));
-  }
+export const fetchForYouMovies = async (genreIds: number[] = [], actorIds: number[] = [], page = 1): Promise<Movie[]> => {
+  if (!TMDB_ENABLED) return [];
 
   const cacheKey = `foryou_${genreIds.join('|')}_${actorIds.join('|')}_p${page}`;
   if (sessionCache.has(cacheKey)) {
     const cached = sessionCache.get(cacheKey);
-    return Array.isArray(cached) ? cached as unknown as Movie[] : [];
+    if (Array.isArray(cached) && cached.length > 0) return cached as unknown as Movie[];
   }
 
   try {
+    const fetches: Promise<any>[] = [];
+
+    // 1. Fetch by top genres
+    if (genreIds.length > 0) {
+      const genresStr = genreIds.join('|');
+      const params = new URLSearchParams({
+        api_key: TMDB_KEY,
+        sort_by: 'popularity.desc',
+        include_adult: 'false',
+        page: String(page),
+        with_genres: genresStr,
+        'vote_count.gte': '50',
+      });
+      fetches.push(fetch(`${TMDB_URL}/discover/movie?${params}`).then(r => r.json()));
+    }
+
+    // 2. Fetch by top actors
+    if (actorIds.length > 0) {
+      const castStr = actorIds.join('|');
+      const params = new URLSearchParams({
+        api_key: TMDB_KEY,
+        sort_by: 'popularity.desc',
+        include_adult: 'false',
+        page: String(page),
+        with_cast: castStr,
+      });
+      fetches.push(fetch(`${TMDB_URL}/discover/movie?${params}`).then(r => r.json()));
+    }
+
+    // 3. Fallback when fresh / no tastes yet: fetch top popular films
+    if (fetches.length === 0) {
+      const params = new URLSearchParams({
+        api_key: TMDB_KEY,
+        sort_by: 'popularity.desc',
+        include_adult: 'false',
+        page: String(page),
+        'vote_count.gte': '200',
+      });
+      fetches.push(fetch(`${TMDB_URL}/discover/movie?${params}`).then(r => r.json()));
+    }
+
     const responses = await Promise.all(fetches);
     let allResults: any[] = [];
     
@@ -923,34 +1062,51 @@ export const fetchForYouMovies = async (genreIds: number[], actorIds: number[], 
 
     if (allResults.length === 0) return [];
 
-    // Deduplicate by ID
+    // Deduplicate by ID and require verified poster artwork
     const uniqueMap = new Map();
-    allResults.forEach(r => uniqueMap.set(r.id, r));
+    allResults.forEach(r => {
+      if (r && r.poster_path && r.title) {
+        uniqueMap.set(r.id, r);
+      }
+    });
     const uniqueResults = Array.from(uniqueMap.values());
-    
-    // Sort by popularity just to be safe
-    uniqueResults.sort((a, b) => b.popularity - a.popularity);
+    uniqueResults.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
 
-    // Fetch full detail+videos for top results in parallel
-    const ids: number[] = uniqueResults.slice(0, 20).map((m: any) => m.id);
-    const settled = await Promise.allSettled(
-      ids.map((id, i) => fetchTMDBMovieById(id, i))
-    );
-    const finalResults = settled
-      .filter((r): r is PromiseFulfilledResult<Movie> =>
-        r.status === 'fulfilled' && r.value !== null)
-      .map(r => r.value);
-      
-    // Shuffle the final array to mix genre/actor recommendations organically
-    for (let i = finalResults.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [finalResults[i], finalResults[j]] = [finalResults[j], finalResults[i]];
+    // Instant zero-waterfall conversion with parseTMDBDiscoverMovie
+    const finalResults = uniqueResults.slice(0, 16).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
+
+    // Shuffle slightly if multi-genre to keep recommendations fresh
+    if (genreIds.length > 1 || actorIds.length > 0) {
+      for (let i = finalResults.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [finalResults[i], finalResults[j]] = [finalResults[j], finalResults[i]];
+      }
     }
-      
+
     sessionCache.set(cacheKey, finalResults as any);
     return finalResults;
   } catch (e) {
     console.warn('For You fetch failed:', e);
     return [];
   }
+};
+
+// ─── Fetch Now Playing / Currently Released Theatrical Movies for CDs from TMDB API ───
+export const extractYoutubeVideoId = (str?: string): string => {
+  if (!str) return 'kQDd1AhGIHk';
+  const clean = str.trim();
+  const match = clean.match(/(?:embed\/|v=|vi\/|youtu\.be\/|\/v\/|^|\/)([a-zA-Z0-9_-]{11})(?:[?&/#]|$)/);
+  if (match && match[1]) return match[1];
+  if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) return clean;
+  return clean;
+};
+
+export const pickCleanTrailerKey = (videos?: any[]): string => {
+  if (!videos || !videos.length) return '';
+  const official = videos.find(v => v.type === 'Trailer' && v.site === 'YouTube' && v.official);
+  const anyTrailer = videos.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+  const teaser = videos.find(v => (v.type === 'Teaser' || v.type === 'Clip') && v.site === 'YouTube');
+  const anyVideo = videos.find(v => v.site === 'YouTube');
+  const chosen = official || anyTrailer || teaser || anyVideo;
+  return chosen?.key ? extractYoutubeVideoId(chosen.key) : '';
 };

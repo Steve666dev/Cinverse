@@ -39,32 +39,37 @@ const MovieReel: React.FC<MovieReelProps> = ({ id, title, description, movies, o
   };
 
   const sectionRef = useRef<HTMLElement>(null);
+  const hasAnimatedRef = useRef(false);
 
   useGSAP(() => {
-    if (reduceMotion || !movies.length) return;
+    if (reduceMotion || !movies.length || hasAnimatedRef.current) return;
+
+    const cards = gsap.utils.toArray(trackRef.current?.children || []);
+    if (!cards.length) return;
 
     gsap.fromTo(
-      gsap.utils.toArray(trackRef.current?.children || []),
+      cards.slice(0, 8),
       { 
-        y: 60,
-        opacity: 0,
-        scale: 0.95
+        y: 18,
+        opacity: 0.7
       },
       {
         y: 0,
         opacity: 1,
-        scale: 1,
-        duration: 1.2,
-        ease: "expo.out",
-        stagger: 0.08,
+        duration: 0.3,
+        ease: "power2.out",
+        stagger: 0.02,
         scrollTrigger: {
           trigger: sectionRef.current,
-          start: "top 85%",
-          toggleActions: "play none none reverse"
+          start: "top 92%",
+          once: true
+        },
+        onComplete: () => {
+          hasAnimatedRef.current = true;
         }
       }
     );
-  }, { scope: sectionRef, dependencies: [movies] });
+  }, { scope: sectionRef });
 
   return (
     <section className="reel-section" id={id} ref={sectionRef}>

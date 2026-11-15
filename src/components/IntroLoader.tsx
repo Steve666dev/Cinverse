@@ -1,18 +1,51 @@
 import React, { useRef } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { TextScramble } from './core/text-scramble';
 import './IntroLoader.css';
 
 interface IntroLoaderProps {
-  loadProgress: string;
+  loadProgress?: string;
+  isFadingOut?: boolean;
 }
 
-const IntroLoader: React.FC<IntroLoaderProps> = ({ loadProgress }) => {
+const LETTERS = ['C', 'I', 'N', 'E', 'V', 'E', 'R', 'S', 'E'];
+
+const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   useGSAP(() => {
+    // 1. Pristine, majestic cinematic title reveal animation
+    if (titleRef.current) {
+      const chars = titleRef.current.querySelectorAll('.intro-char');
+      gsap.fromTo(
+        chars,
+        {
+          opacity: 0,
+          y: 24,
+          scale: 0.88,
+          filter: 'blur(10px)',
+        },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          filter: 'blur(0px)',
+          duration: 0.85,
+          stagger: 0.045,
+          ease: 'power3.out',
+        }
+      );
+
+      gsap.to(titleRef.current, {
+        letterSpacing: '0.28em',
+        duration: 2.0,
+        ease: 'sine.out',
+      });
+    }
+
+    // 2. Canvas particle constellation background
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext("2d");
@@ -28,49 +61,38 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ loadProgress }) => {
     // Track all posters we've ever shown so we never repeat
     const seenPosters = new Set<string>();
 
-    // TMDB API Key
-    const API_KEY = 'be6b01a4600e4ced87a42b190ea40313';
+    // TMDB API Key from environment
+    const API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
     const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w200';
 
-    // Fetches exactly 'count' unique movies from all genres and languages
-    async function fetchUniqueMovies(count: number, pages: number = 1) {
-      let newPosters: string[] = [];
-      
-      while (newPosters.length < count && isActive) {
-        try {
-          const fetchPromises = [];
-          for (let i = 0; i < pages; i++) {
-            const randomPage = Math.floor(Math.random() * 500) + 1;
-            fetchPromises.push(
-              fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&page=${randomPage}`)
-                .then(res => res.json())
-            );
-          }
-          
-          const results = await Promise.all(fetchPromises);
-          
-          for (let data of results) {
-            if (data.results) {
-              for (let movie of data.results) {
-                if (movie.poster_path) {
-                  const posterUrl = IMAGE_BASE_URL + movie.poster_path;
-                  if (!seenPosters.has(posterUrl)) {
-                    seenPosters.add(posterUrl);
-                    newPosters.push(posterUrl);
-                  }
-                }
+    // Fetches unique movies fast without endless loops
+    async function fetchUniqueMovies(count: number, _pages: number = 1) {
+      const newPosters: string[] = [];
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1200);
+        const randomPage = Math.floor(Math.random() * 20) + 1;
+        const res = await fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&page=${randomPage}`, {
+          signal: controller.signal
+        }).then(r => r.json()).catch(() => ({ results: [] }));
+        clearTimeout(timeoutId);
+
+        if (Array.isArray(res?.results)) {
+          for (const movie of res.results) {
+            if (movie.poster_path) {
+              const directUrl = IMAGE_BASE_URL + movie.poster_path;
+              const posterUrl = `https://wsrv.nl/?url=${encodeURIComponent(directUrl)}&output=webp&q=70`;
+              if (!seenPosters.has(posterUrl)) {
+                seenPosters.add(posterUrl);
+                newPosters.push(posterUrl);
+                if (newPosters.length >= count) break;
               }
             }
           }
-        } catch (e) {
-          console.error("Error fetching movies:", e);
-          break; 
         }
-        
-        // If we only requested a few pages to start fast, break early so we don't block
-        if (pages === 1 && newPosters.length > 0) break;
+      } catch {
+        // Fallback gracefully
       }
-      
       return newPosters;
     }
 
@@ -201,17 +223,17 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ loadProgress }) => {
   }, { scope: containerRef });
 
   return (
-    <div className="intro-loader" ref={containerRef}>
-      <canvas ref={canvasRef} className="intro-canvas"></canvas>
-      <div className="intro-overlay"></div>
+    <div className={`intro-loader ${isFadingOut ? 'fade-out' : ''}`} ref={containerRef}>
+      <canvas ref={canvasRef} className="intro-canvas" />
+      <div className="intro-overlay" />
       <div className="intro-content">
-        <div className="intro-title">
-          <TextScramble>CINEVERSE</TextScramble>
-        </div>
-        <div className="reel-spin"></div>
-        <div className="intro-progress">
-          {loadProgress}
-        </div>
+        <h1 className="intro-title" ref={titleRef} aria-label="CINEVERSE">
+          {LETTERS.map((letter, i) => (
+            <span key={i} className="intro-char">
+              {letter}
+            </span>
+          ))}
+        </h1>
       </div>
     </div>
   );

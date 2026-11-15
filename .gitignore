@@ -18,7 +18,10 @@ dist-ssr
 .env.*.local
 .env.production
 .env.development
+server/.env
+server/.env.*
 !.env.example
+!server/.env.example
 
 # Editor directories and files
 .vscode/*
@@ -31,3 +34,28 @@ dist-ssr
 *.sln
 *.sw?
 .originkit/
+data/cache/
+data/cache
+
+# Sub-repositories, archives, and scratch
+Cinverse/
+old_project_archive/
+.gemini/
+scratch/
+security-audit-skill/
+search-teaser/
+
+# One-off test and verification scripts
+capture_*.mjs
+debug_*.mjs
+pw_debug.mjs
+scratch_test_*.mjs
+test_dock_over_poster.mjs
+test_e2e_pipeline.mjs
+test_embed.mjs
+test_imdb_tmdb.mjs
+test_img.mjs
+test_index_loaded.mjs
+test_perfect_render.mjs
+verify_*.js
+verify_*.mjs

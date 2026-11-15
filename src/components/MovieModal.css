@@ -21,8 +21,8 @@
 /* Modal Card */
 #modalCard {
   width: min(880px, 95vw);
-  height: min(86vh, 700px);
-  max-height: 86vh;
+  height: min(86dvh, 86vh, 700px);
+  max-height: min(86dvh, 86vh, 700px);
   background: #0d0d0d;
   border: 1px solid var(--line-bright);
   display: flex;
@@ -84,35 +84,86 @@
   z-index: 10;
 }
 
-.modal-top-watchlist-btn, #modalClose {
-  width: 34px; height: 34px;
+.modal-top-watchlist-btn {
+  width: 36px; height: 36px;
   border: 1px solid var(--line);
-  background: rgba(6,6,6,0.6);
+  background: rgba(12, 16, 24, 0.75);
+  backdrop-filter: blur(8px);
   color: var(--cream);
   cursor: pointer;
-  font-size: 1rem;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  transition: all .2s ease;
+  transition: all .2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+}
+
+#modalClose {
+  box-sizing: border-box;
+  flex-shrink: 0 !important;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  background: rgba(6, 6, 6, 0.6);
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.3s ease, border-color 0.3s ease;
+  outline: none;
+}
+
+#modalClose:before,
+#modalClose:after {
+  content: "";
+  width: 15px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 1px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -1px;
+  margin-left: -7.5px;
+  transition: transform 0.3s ease-out;
+}
+
+#modalClose:before {
+  transform: rotate(-45deg);
+}
+
+#modalClose:after {
+  transform: rotate(45deg);
 }
 
 #modalClose:hover {
-  border-color: var(--blue-bright);
-  color: var(--blue-bright);
-  transform: rotate(90deg);
-  box-shadow: var(--glow-sm);
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+#modalClose:hover:before,
+#modalClose:hover:after {
+  transform: rotate(180deg);
 }
 
 .modal-top-watchlist-btn:hover {
-  border-color: var(--blue-bright);
-  color: var(--blue-bright);
-  transform: scale(1.1);
-  box-shadow: var(--glow-sm);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.12);
 }
 .modal-top-watchlist-btn.saved {
   border-color: #3b82f6;
   color: #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.35);
+}
+.modal-top-watchlist-btn.saved:hover {
+  transform: scale(1.08);
+  border-color: #60a5fa;
+  color: #60a5fa;
 }
 
 /* Title area */
@@ -208,6 +259,7 @@
   overflow-x: hidden;
   min-height: 0;
   padding-right: 8px;
+  padding-bottom: 36px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
   -webkit-overflow-scrolling: touch;
@@ -265,6 +317,7 @@
 /* Cast Details */
 .modal-cast-section {
   margin-bottom: 24px;
+  padding-bottom: 24px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -466,31 +519,90 @@
 }
 .trailer-ext-link {
   color: var(--muted);
-  text-decoration: underline;
-  transition: color 0.2s ease;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
 }
 .trailer-ext-link:hover {
   color: #fff;
 }
 
+/* YouTube Logo Button */
+.yt-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.yt-badge-btn:hover {
+  background: rgba(255, 0, 0, 0.16);
+  border-color: rgba(255, 0, 0, 0.55);
+  transform: scale(1.06);
+  box-shadow: 0 0 14px rgba(255, 0, 0, 0.35);
+}
+.yt-icon-logo {
+  display: block;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.yt-badge-btn:hover .yt-icon-logo {
+  transform: scale(1.05);
+}
+
+.modal-pane-end-spacer {
+  pointer-events: none;
+}
+
 /* ── Full-screen Trailer Lightbox ── */
 .trailer-lightbox {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  width: 100vw; height: 100vh;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100dvh;
   z-index: 99999;
-  background: rgba(4, 4, 4, 0.97);
+  background: rgba(4, 4, 4, 0.98);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
   animation: lightboxIn 0.15s ease;
 }
+
+.trailer-lightbox::-webkit-scrollbar {
+  width: 6px;
+}
+
+.trailer-lightbox::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+}
+
+.trailer-lightbox * {
+  box-sizing: border-box;
+}
+
 @keyframes lightboxIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 .trailer-lightbox-inner {
+  box-sizing: border-box;
   width: 100%;
   max-width: 1100px;
   display: flex;
@@ -504,15 +616,23 @@
   to   { transform: none; opacity: 1; }
 }
 .trailer-lightbox-header {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 4px;
+  gap: 14px;
+  padding: 0 20px 0 0;
+  min-height: 44px;
 }
 .trailer-lightbox-title {
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 .trailer-lightbox-label {
   font-family: var(--font-mono);
@@ -524,19 +644,29 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 4px 10px;
   border-radius: 4px;
+  flex-shrink: 0 !important;
 }
 .trailer-lightbox-name {
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: clamp(1.1rem, 2.8vw, 1.5rem);
   color: var(--cream);
   letter-spacing: .06em;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .trailer-lightbox-actions {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0 !important;
+  margin-left: auto;
+  padding-right: 6px;
 }
 .trailer-lightbox-yt-btn {
+  box-sizing: border-box;
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: #aaa;
@@ -550,6 +680,11 @@
   gap: 6px;
   cursor: pointer;
   text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0 !important;
+}
+.trailer-yt-short {
+  display: none;
 }
 .trailer-lightbox-yt-btn:hover {
   color: #fff;
@@ -557,34 +692,68 @@
   border-color: rgba(255, 255, 255, 0.4);
 }
 .trailer-lightbox-close {
+  box-sizing: border-box;
   width: 44px;
   height: 44px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.3);
   background: rgba(20, 20, 20, 0.85);
-  color: var(--cream);
-  font-size: 1.2rem;
   cursor: pointer;
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  padding: 0;
+  margin-right: 6px;
+  transition: background 0.3s ease, border-color 0.3s ease;
+  flex-shrink: 0 !important;
+  outline: none;
 }
+
+.trailer-lightbox-close:before,
+.trailer-lightbox-close:after {
+  content: "";
+  width: 18px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 1px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -1px;
+  margin-left: -9px;
+  transition: transform 0.3s ease-out;
+}
+
+.trailer-lightbox-close:before {
+  transform: rotate(-45deg);
+}
+
+.trailer-lightbox-close:after {
+  transform: rotate(45deg);
+}
+
 .trailer-lightbox-close:hover {
-  border-color: #fff;
-  color: #000;
-  background: #fff;
-  transform: rotate(90deg) scale(1.05);
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.trailer-lightbox-close:hover:before,
+.trailer-lightbox-close:hover:after {
+  transform: rotate(180deg);
 }
 .trailer-lightbox-video {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.9);
   background: #000;
+  transform: translateZ(0);
+  will-change: transform;
+  contain: content;
 }
 .trailer-lightbox-video iframe {
   position: absolute;
@@ -594,6 +763,7 @@
   height: 100%;
   border: none;
   display: block;
+  transform: translateZ(0);
 }
 .trailer-lightbox-footer {
   text-align: center;
@@ -1126,26 +1296,153 @@
 }
 
 @media (max-width: 768px) {
+  #modalBackdrop {
+    padding: max(12px, env(safe-area-inset-top, 12px)) 12px max(16px, env(safe-area-inset-bottom, 16px));
+  }
   #modalCard {
     flex-direction: column;
-    height: 92vh;
-    max-height: 92vh;
+    width: 100%;
+    height: min(92svh, 92dvh, 92vh);
+    max-height: min(92svh, 92dvh, 92vh);
+    border-radius: 16px;
   }
   #modalPoster {
-    flex: 0 0 200px;
-    min-height: 200px;
-    height: 200px;
+    flex: 0 0 175px;
+    min-height: 175px;
+    height: 175px;
     width: 100%;
   }
   #modalBody {
-    padding: 20px 20px 16px;
+    padding: 18px 18px 14px;
     flex: 1 1 auto;
     min-height: 0;
   }
-  #modalTitle { font-size: clamp(1.6rem, 6vw, 2.2rem); }
-  .modal-tabs { overflow-x: auto; white-space: nowrap; }
+  #modalTitle { font-size: clamp(1.4rem, 5.5vw, 2rem); }
+  .modal-tabs { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
   .modal-tabs button { padding: 8px 12px 6px; font-size: 0.65rem; }
-  .trailer-lightbox { padding: 10px; }
-  .trailer-lightbox-name { font-size: 1.1rem; }
+  .trailer-lightbox {
+    padding: max(12px, env(safe-area-inset-top, 12px)) max(16px, env(safe-area-inset-right, 16px)) max(16px, env(safe-area-inset-bottom, 16px)) max(16px, env(safe-area-inset-left, 16px));
+  }
+  .trailer-lightbox-header {
+    gap: 8px;
+    padding-right: 16px;
+  }
+  .trailer-lightbox-title {
+    gap: 8px;
+  }
+  .trailer-lightbox-name {
+    font-size: 1.05rem;
+  }
+  .trailer-lightbox-label {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+  }
+  .trailer-lightbox-actions {
+    gap: 8px;
+    padding-right: 4px;
+    flex-shrink: 0 !important;
+  }
+  .trailer-lightbox-yt-btn {
+    padding: 6px 12px;
+    font-size: 0.68rem;
+    flex-shrink: 0 !important;
+  }
+  .trailer-lightbox-close {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    margin-right: 4px;
+    flex-shrink: 0 !important;
+    touch-action: manipulation;
+  }
+  .trailer-lightbox-close:before,
+  .trailer-lightbox-close:after {
+    width: 14px;
+    margin-left: -7px;
+  }
+  #modalClose,
+  .modal-top-watchlist-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    touch-action: manipulation;
+  }
   .watch-providers-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .trailer-lightbox {
+    padding: 10px max(14px, env(safe-area-inset-right, 14px));
+  }
+  .trailer-lightbox-header {
+    gap: 6px;
+    padding-right: 14px;
+  }
+  .trailer-lightbox-title {
+    gap: 6px;
+  }
+  .trailer-lightbox-label {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+  }
+  .trailer-lightbox-name {
+    font-size: 0.88rem;
+  }
+  .trailer-lightbox-actions {
+    gap: 6px;
+    padding-right: 4px;
+    flex-shrink: 0 !important;
+  }
+  .trailer-yt-full {
+    display: none;
+  }
+  .trailer-yt-short {
+    display: inline;
+  }
+  .trailer-lightbox-yt-btn {
+    padding: 6px 10px;
+    font-size: 0.66rem;
+    flex-shrink: 0 !important;
+  }
+  .trailer-lightbox-close {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+    margin-right: 4px;
+    flex-shrink: 0 !important;
+    touch-action: manipulation;
+  }
+  .trailer-lightbox-close:before,
+  .trailer-lightbox-close:after {
+    width: 12px;
+    margin-left: -6px;
+  }
+  #modalCard {
+    height: min(94svh, 94dvh, 94vh);
+    max-height: min(94svh, 94dvh, 94vh);
+  }
+  #modalPoster {
+    flex: 0 0 145px;
+    min-height: 145px;
+    height: 145px;
+  }
+  #modalBody {
+    padding: 14px 14px 12px;
+  }
+  .modal-top-actions {
+    top: 10px;
+    right: 10px;
+    gap: 8px;
+  }
+  #modalClose,
+  .modal-top-watchlist-btn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+    touch-action: manipulation;
+  }
 }

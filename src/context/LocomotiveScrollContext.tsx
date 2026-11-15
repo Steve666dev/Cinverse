@@ -27,12 +27,12 @@ export function LocomotiveScrollProvider({ children }: { children: React.ReactNo
       const options: ILocomotiveScrollOptions = {
         autoStart: true,
         lenisOptions: {
-          duration: 1.1,
+          duration: 0.7,
           orientation: 'vertical',
           gestureOrientation: 'vertical',
           smoothWheel: true,
-          wheelMultiplier: 0.9,
-          touchMultiplier: 1.5,
+          wheelMultiplier: 1.1,
+          touchMultiplier: 1.2,
         }
       };
 

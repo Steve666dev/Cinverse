@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useWatchlist } from '../context/WatchlistContext';
-import { Dock, DockItem, DockIcon, DockLabel } from './core/dock';
-import { Search, Film, Languages } from 'lucide-react';
+import { Dock, DockIcon, DockItem, DockLabel } from './core/dock';
 import { CineverseDoodleLogo } from './core/CineverseDoodleLogo';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -114,6 +113,44 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
 
   const headerRef = useRef<HTMLElement>(null);
 
+  // Floating Dock: hidden while on the CD gallery hero, and hidden after scrolling to/past the Explore button
+  const [isDockVisible, setIsDockVisible] = useState(false);
+
+  useEffect(() => {
+    let rafId: number | null = null;
+    const checkScroll = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        // CD page height (upcoming-theaters / a24-disc-hero)
+        const cdHero = document.getElementById('upcoming-theaters') || document.querySelector('.a24-disc-hero');
+        const heroHeight = cdHero ? cdHero.clientHeight : window.innerHeight;
+        // Threshold: pop up after scrolling ~40% of the CD gallery (or 320px)
+        const threshold = Math.min(heroHeight * 0.4, 350);
+        const scrollY = window.scrollY || document.documentElement.scrollTop;
+
+        // Hide after scrolling into the feedback section so it does not overlap the feedback button
+        const feedbackEl = document.getElementById('feedback');
+        let inFeedback = false;
+        if (feedbackEl) {
+          const rect = feedbackEl.getBoundingClientRect();
+          inFeedback = rect.top <= window.innerHeight * 0.7;
+        }
+
+        setIsDockVisible(scrollY > threshold && !inFeedback);
+      });
+    };
+
+    checkScroll();
+    window.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, []);
+
 
   // Smart Header: Hide on scroll down, show on scroll up
   useGSAP(() => {
@@ -152,233 +189,282 @@ const Header: React.FC<HeaderProps> = ({ onSearch, onDiscover }) => {
     };
   }, []);
 
-  const searchTlRef = useRef<gsap.core.Timeline | null>(null);
+  const [animState, setAnimState] = useState<'closed' | 'initial' | 'expanded'>('closed');
 
-  useGSAP(() => {
-    const mm = gsap.matchMedia();
-    mm.add({
-      reduceMotion: "(prefers-reduced-motion: reduce)",
-      isNormal: "(prefers-reduced-motion: no-preference)"
-    }, (context) => {
-      const { reduceMotion } = context.conditions as { reduceMotion?: boolean };
-      
-      searchTlRef.current = gsap.timeline({ paused: true })
-        // Make the overlay visible and interactable
-        .set('.header-search-overlay', { visibility: 'visible', pointerEvents: 'auto' })
-        // Fade in the backdrop
-        .to('.header-search-overlay', { 
-          opacity: 1, 
-          duration: reduceMotion ? 0 : 0.3, 
-          ease: 'power2.out' 
-        }, 0)
-        // Spring the search panel in (exactly like the island menu panel)
-        .fromTo('.header-search-container', 
-          { autoAlpha: 0, yPercent: -10, scale: 0.6 },
-          { 
-            autoAlpha: 1, 
-            yPercent: 0, 
-            scale: 1, 
-            duration: reduceMotion ? 0 : 0.8, 
-            transformOrigin: 'top center',
-            ease: 'back.out(2)', 
-            easeReverse: reduceMotion ? false : 'power3.out' 
-          }, 0.1
-        )
-        // Stagger in the tabs and content slightly later
-        .fromTo('.popup-tabs-wrapper', 
-          { opacity: 0, y: 10 },
-          { 
-            opacity: 1, 
-            y: 0, 
-            duration: reduceMotion ? 0 : 0.3, 
-            ease: 'power2.out', 
-            easeReverse: reduceMotion ? false : 'power2.in' 
-          }, 0.2
-        );
-    });
-  });
-
+  // Pure transparent frosted glass effect from start: compact transparent pill -> springs open to full width
   useEffect(() => {
     if (isOpen) {
-      searchTlRef.current?.timeScale(1).play();
+      setAnimState('initial');
+      const t = setTimeout(() => {
+        setAnimState('expanded');
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 40);
+      return () => clearTimeout(t);
     } else {
-      searchTlRef.current?.timeScale(1.5).reverse().then(() => {
-        // Hide and disable pointer events when fully closed
-        gsap.set('.header-search-overlay', { visibility: 'hidden', pointerEvents: 'none' });
-      });
+      setAnimState('closed');
     }
   }, [isOpen]);
 
   return (
     <>
       <header ref={headerRef}>
-        <button className="logo" onClick={handleLogoClick}>
+        <button className="logo" onClick={handleLogoClick} aria-label="Movies Gallery Home">
+          <img
+            src="/movies-gallery-logo.png"
+            alt="Movies Gallery Logo"
+            className="header-site-logo-img"
+          />
           <CineverseDoodleLogo />
         </button>
+      </header>
 
-
-      {/* Unified Popup — always in DOM, toggled via .open class for smooth transitions */}
+      {/* Unified Search Drop-down down from CINEVERSE Header */}
       {createPortal(
         <div
-          className={`header-search-overlay${isOpen ? ' open' : ''}`}
+          className={`header-motion-search-overlay${isOpen ? ' open' : ''}`}
           data-lenis-prevent="true"
           data-locomotive-scroll-stop
           onClick={() => setIsOpen(false)}
         >
+          {/* Ambient backlight glow behind pill */}
+          <div className={`search-ambient-glow ${animState === 'expanded' ? 'glow-expanded' : animState === 'initial' ? 'glow-active' : ''}`} />
+
+          {/* Search Stage down the header */}
           <div
-            className="header-search-container"
-            data-lenis-prevent="true"
-            data-locomotive-scroll-stop
+            className="search-motion-stage"
             onClick={e => e.stopPropagation()}
           >
-            <button
-              className="popup-close-btn"
-              onClick={() => setIsOpen(false)}
-              aria-label="Close dialog"
+            {/* The transparent frosted glass search pill: starts directly from transparent effect, expands with spring & shimmer */}
+            <div
+              className={`search-motion-pill ${
+                animState === 'expanded'
+                  ? 'state-expanded shimmer'
+                  : animState === 'initial'
+                  ? 'state-initial'
+                  : 'state-hidden'
+              }`}
             >
-              ✕
-            </button>
+              {/* Magnifying Glass SVG Icon with stroke draw animation in white */}
+              <svg
+                className={`search-motion-icon ${
+                  animState === 'expanded' ? 'icon-shift' : 'icon-pop'
+                }`}
+                viewBox="0 0 64 64"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle className="icon-circle" cx="27" cy="27" r="16.5" stroke="currentColor" strokeWidth="5.5" />
+                <path className="icon-handle" d="M39.5 40.5L52 53" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" />
+              </svg>
 
-            {/* Header Actions */}
-            <div className="header-actions">
-              {/* Apple Style Dock for Tabs */}
-              <div className="popup-tabs-wrapper">
-                <Dock className="gap-6">
-                  <DockItem
-                    key="search"
-                    active={activeTab === 'search'}
-                    onClick={() => setActiveTab('search')}
-                  >
-                    <DockLabel>Search</DockLabel>
-                    <DockIcon>
-                      <Search />
-                    </DockIcon>
-                  </DockItem>
-                  <DockItem
-                    key="genre"
-                    active={activeTab === 'genre'}
-                    onClick={() => setActiveTab('genre')}
-                  >
-                    <DockLabel>Genres</DockLabel>
-                    <DockIcon>
-                      <Film />
-                    </DockIcon>
-                  </DockItem>
-                  <DockItem
-                    key="language"
-                    active={activeTab === 'language'}
-                    onClick={() => setActiveTab('language')}
-                  >
-                    <DockLabel>Languages</DockLabel>
-                    <DockIcon>
-                      <Languages />
-                    </DockIcon>
-                  </DockItem>
-                </Dock>
-              </div>
-            </div>
-
-            {/* Search Tab */}
-            {activeTab === 'search' && (
-              <form onSubmit={handleSearchSubmit} className="header-search-form">
+              {/* Live Search Form Input directly inside transparent frosted glass */}
+              <form onSubmit={handleSearchSubmit} className="search-pill-form">
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Search movies, directors, or keywords..."
+                  className="search-pill-input"
+                  placeholder="Search movies, directors, keywords..."
                   value={query}
                   onChange={e => setQuery(e.target.value)}
+                  autoFocus
                 />
-                <button type="submit" className="header-search-submit" aria-label="Submit Search">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                {query && (
+                  <button
+                    type="button"
+                    className="search-pill-clear"
+                    onClick={() => {
+                      setQuery('');
+                      inputRef.current?.focus();
+                    }}
+                    aria-label="Clear query"
+                  >
+                    ✕
+                  </button>
+                )}
+                <button type="submit" className="search-pill-submit" aria-label="Submit search">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
                 </button>
               </form>
-            )}
 
-            {/* Genre Tab */}
-            {activeTab === 'genre' && (
-              <div className="popup-grid">
-                {GENRES.map(g => (
-                  <button
-                    key={g.id}
-                    className={`popup-chip ${activeGenre.id === g.id ? 'active' : ''}`}
-                    onClick={() => handleGenreSelect(g)}
-                  >
-                    <span>{g.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+              <button
+                type="button"
+                className="search-pill-close"
+                onClick={() => setIsOpen(false)}
+                aria-label="Close search"
+              >
+                Esc
+              </button>
+            </div>
 
-            {/* Language Tab */}
-            {activeTab === 'language' && (
-              <div className="popup-grid">
-                {LANGUAGES.map(l => (
-                  <button
-                    key={l.code}
-                    className={`popup-chip ${activeLang.code === l.code ? 'active' : ''}`}
-                    onClick={() => handleLangSelect(l)}
-                  >
-                    {l.flag ? <span>{l.flag}</span> : null}
-                    <span>{l.label}</span>
-                  </button>
-                ))}
+            {/* 2nd image matching capsule: [ Search ] Categories Languages */}
+            <div className={`search-capsule-panel ${animState === 'expanded' ? 'panel-visible' : ''}`}>
+              <div className="search-capsule-bar">
+                <button
+                  type="button"
+                  className={`search-capsule-tab ${activeTab === 'search' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab('search');
+                    inputRef.current?.focus();
+                  }}
+                >
+                  Search
+                </button>
+                <button
+                  type="button"
+                  className={`search-capsule-tab ${activeTab === 'genre' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('genre')}
+                >
+                  Categories
+                </button>
+                <button
+                  type="button"
+                  className={`search-capsule-tab ${activeTab === 'language' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('language')}
+                >
+                  Languages
+                </button>
               </div>
-            )}
 
-            {/* Active filter hint */}
-            {activeTab !== 'search' && (
-              <div className="popup-active-hint">
-                Active: {activeGenre.label} · {activeLang.flag === 'ALL' ? '' : `${activeLang.flag} `}{activeLang.label}
-              </div>
-            )}
+              {activeTab === 'genre' && (
+                <div className="search-quick-grid">
+                  {GENRES.map(g => (
+                    <button
+                      key={g.id}
+                      className={`search-quick-chip ${activeGenre.id === g.id ? 'active' : ''}`}
+                      onClick={() => handleGenreSelect(g)}
+                    >
+                      <span>{g.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {activeTab === 'language' && (
+                <div className="search-quick-grid">
+                  {LANGUAGES.map(l => (
+                    <button
+                      key={l.code}
+                      className={`search-quick-chip ${activeLang.code === l.code ? 'active' : ''}`}
+                      onClick={() => handleLangSelect(l)}
+                    >
+                      {l.flag && <span>{l.flag}</span>}
+                      <span>{l.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>,
         document.body
       )}
-    </header>
 
-    {/* Floating Bottom Nav */}
-    <nav className="links">
-      <button
-        className="nav-search-btn dock-item group"
-        onClick={() => { setIsOpen(true); setActiveTab('search'); }}
-        aria-label="Search"
-      >
-        <span className="dock-tooltip">Search</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
-      <button
-        className="nav-filter-btn dock-item group"
-        onClick={() => { setIsOpen(true); setActiveTab('genre'); }}
-        aria-label="Genre"
-      >
-        <span className="dock-tooltip">Genre</span>
-        <img 
-          src="/icons/genre.png" 
-          alt="Genre" 
-          width="24" 
-          height="24" 
-        />
-      </button>
-      <button
-        className="nav-filter-btn dock-item group"
-        onClick={() => { setIsOpen(true); setActiveTab('language'); }}
-        aria-label="Language"
-      >
-        <span className="dock-tooltip">Language</span>
-        <img 
-          src="/icons/language.png" 
-          alt="Language" 
-          width="24" 
-          height="24" 
-        />
-      </button>
-      <button className="nav-watchlist dock-item group" onClick={handleWatchlistClick} aria-label="Watchlist">
-        <span className="dock-tooltip">Watchlist</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="#ff4b4b" stroke="#ff4b4b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        {watchlist.size > 0 && <span className="watch-count">{watchlist.size}</span>}
-      </button>
-    </nav>
+    {/* SVG Chromatic Displacement Glass Filter for Liquid Glass Dock */}
+    <svg className="glass-surface__filter" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <filter id="glass-filter-_r_b_" colorInterpolationFilters="sRGB" x="0%" y="0%" width="100%" height="100%">
+          <feImage
+            x="0"
+            y="0"
+            width="100%"
+            height="100%"
+            preserveAspectRatio="none"
+            result="map"
+            href="/glass-map.png"
+          />
+          <feDisplacementMap in="SourceGraphic" in2="map" id="redchannel" result="dispRed" scale="-20" xChannelSelector="R" yChannelSelector="G" />
+          <feColorMatrix in="dispRed" type="matrix" values="1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" result="red" />
+          <feDisplacementMap in="SourceGraphic" in2="map" id="greenchannel" result="dispGreen" scale="-24" xChannelSelector="R" yChannelSelector="G" />
+          <feColorMatrix in="dispGreen" type="matrix" values="0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0" result="green" />
+          <feDisplacementMap in="SourceGraphic" in2="map" id="bluechannel" result="dispBlue" scale="-28" xChannelSelector="R" yChannelSelector="G" />
+          <feColorMatrix in="dispBlue" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0" result="blue" />
+          <feBlend in="red" in2="green" mode="screen" result="rg" />
+          <feBlend in="rg" in2="blue" mode="screen" result="output" />
+          <feGaussianBlur in="output" stdDeviation="3" />
+        </filter>
+      </defs>
+    </svg>
+
+    {/* Floating Liquid Glass Apple Style Dock (Pops up down after scrolling CD's page) */}
+    <div className={`wrapper apple-dock-wrapper ${isDockVisible ? 'dock-visible' : 'dock-hidden'}`}>
+      <div className="liquidglass">
+        <Dock direction="middle" magnification={82} distance={130} className="apple-glass-dock">
+          <DockItem
+            size={54}
+            onClick={() => { setIsOpen(true); setActiveTab('search'); }}
+            className="aspect-square cursor-pointer flex items-center justify-center select-none"
+          >
+            <DockLabel>Search</DockLabel>
+            <DockIcon>
+              <div className="dock-logo-container">
+                <img
+                  src="/dock/search.png"
+                  alt="Search"
+                  className="dock-logo-img dock-logo-search"
+                />
+              </div>
+            </DockIcon>
+          </DockItem>
+
+          <DockItem
+            size={54}
+            onClick={() => { setIsOpen(true); setActiveTab('genre'); }}
+            className="aspect-square cursor-pointer flex items-center justify-center select-none"
+          >
+            <DockLabel>Categories</DockLabel>
+            <DockIcon>
+              <div className="dock-logo-container">
+                <img
+                  src="/dock/categories.png"
+                  alt="Categories"
+                  className="dock-logo-img dock-logo-categories"
+                />
+              </div>
+            </DockIcon>
+          </DockItem>
+
+          <DockItem
+            size={54}
+            onClick={() => { setIsOpen(true); setActiveTab('language'); }}
+            className="aspect-square cursor-pointer flex items-center justify-center select-none"
+          >
+            <DockLabel>Languages</DockLabel>
+            <DockIcon>
+              <div className="dock-logo-container">
+                <img
+                  src="/dock/languages.png"
+                  alt="Languages"
+                  className="dock-logo-img dock-logo-languages"
+                />
+              </div>
+            </DockIcon>
+          </DockItem>
+
+          <DockItem
+            size={54}
+            onClick={handleWatchlistClick}
+            className="aspect-square cursor-pointer flex items-center justify-center select-none relative"
+          >
+            <DockLabel>Watchlist</DockLabel>
+            <DockIcon>
+              <div className="dock-logo-container">
+                <img
+                  src="/dock/watchlist.png"
+                  alt="Watchlist"
+                  className="dock-logo-img dock-logo-watchlist"
+                />
+                {watchlist.size > 0 && <span className="watch-count">{watchlist.size}</span>}
+              </div>
+            </DockIcon>
+          </DockItem>
+        </Dock>
+      </div>
+    </div>
     </>
   );
 };

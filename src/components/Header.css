@@ -6,7 +6,7 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px 5%;
+  padding: max(14px, env(safe-area-inset-top, 14px)) max(5%, env(safe-area-inset-right, 5%)) 14px max(5%, env(safe-area-inset-left, 5%));
   background: transparent;
   transition: all .4s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -22,14 +22,32 @@ header.scrolled {
   font-family: var(--font-display);
   font-size: 1.8rem;
   letter-spacing: .18em;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   cursor: pointer;
   color: var(--cream);
   background: transparent;
   border: none;
+  padding: 0;
+  line-height: 1;
   transition: color .25s ease;
+}
+
+.header-site-logo-img {
+  width: clamp(44px, 4.2vw, 50px);
+  height: clamp(44px, 4.2vw, 50px);
+  border-radius: 50%;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.logo:hover .header-site-logo-img {
+  transform: rotate(180deg) scale(1.1);
 }
 .logo-icon {
   width: 28px;
@@ -142,48 +160,348 @@ header.scrolled {
 }
 
 /* Nav links */
-nav.links {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 20px;
-  align-items: flex-end;
-  z-index: 1000;
-  pointer-events: auto;
-  background: rgba(255, 255, 255, 0.05); /* True clear glass */
-  padding: 12px 24px;
-  border-radius: 40px;
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-top-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.2);
-}
-nav.links a {
-  font-family: var(--font-mono);
-  font-size: .72rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  position: relative;
-  padding-bottom: 4px;
-  transition: color .25s ease;
-}
-nav.links a::after {
-  content: '';
-  position: absolute;
-  left: 0; bottom: 0;
-  height: 1px; width: 0;
-  background: linear-gradient(90deg, var(--blue-neon), var(--blue-bright));
-  transition: width .25s ease;
-  box-shadow: var(--glow-sm);
-}
-nav.links a:hover { color: var(--blue-bright); }
-nav.links a:hover::after { width: 100%; }
+/* ═══════════════════════════════════════════════════════════════════
+   APPLE STYLE LIQUID GLASS DOCK (Chromatic Displacement Glass Surface)
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* Search btn, Filter btn & Watchlist btn — Naked Icons */
+:root, :host { 
+  --glass-frost: 0.12;
+  --glass-saturation: 1.25;
+  --filter-id: url(#glass-filter-_r_b_);
+}
+
+.glass-surface__filter {
+  pointer-events: none;
+  opacity: 0;
+  z-index: -1;
+  width: 0;
+  height: 0;
+  position: absolute;
+  inset: 0;
+}
+
+.apple-dock-wrapper,
+.wrapper.apple-dock-wrapper {
+  position: fixed;
+  bottom: max(22px, env(safe-area-inset-bottom, 22px));
+  left: 50%;
+  transform: translate(-50%, 0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 1000;
+  user-select: none;
+  max-width: 96vw;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, visibility 0.35s ease;
+  will-change: transform, opacity;
+}
+
+/* Hidden while at top on CD's page */
+.apple-dock-wrapper.dock-hidden,
+.wrapper.apple-dock-wrapper.dock-hidden {
+  transform: translate(-50%, 140px) scale(0.92);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Pops up after scrolling past CD's page */
+.apple-dock-wrapper.dock-visible,
+.wrapper.apple-dock-wrapper.dock-visible {
+  transform: translate(-50%, 0) scale(1);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Liquid Glass Dock Pill - FULLY TRANSPARENT */
+.liquidglass {
+  position: relative;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: max-content !important;
+  max-width: 96vw;
+  box-sizing: border-box;
+  background: transparent !important;
+  background-color: transparent !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 
+    inset 0 0 1px 1px rgba(255, 255, 255, 0.22), 
+    0 12px 32px rgba(0, 0, 0, 0.25) !important;
+  border-radius: 9999px;
+  height: 74px;
+  padding: 0 18px;
+  pointer-events: auto;
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+
+.apple-glass-dock.dock-container,
+.apple-glass-dock {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
+  padding: 0 4px !important;
+  margin: 0 !important;
+  width: max-content !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  gap: 16px !important;
+  overflow: visible !important;
+}
+
+.apple-glass-dock .liquidGlass-effect,
+.apple-glass-dock .liquidGlass-tint,
+.apple-glass-dock .liquidGlass-shine {
+  display: none !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.apple-glass-dock .liquidGlass-text {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
+  width: 100% !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.apple-glass-dock .dock-inner-items {
+  gap: 20px !important;
+  height: 100% !important;
+  overflow: visible !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+}
+
+/* Ensure inside of dock has clean passthrough */
+.apple-glass-dock.dock-container::before,
+.apple-glass-dock.dock-container::after,
+.apple-glass-dock::before,
+.apple-glass-dock::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Responsive adjustment for Mobile screens */
+@media (max-width: 640px) {
+  .apple-dock-wrapper {
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+  }
+  .liquidglass {
+    height: 64px !important;
+    padding: 0 12px !important;
+    max-width: 95vw !important;
+  }
+  .apple-glass-dock.dock-container,
+  .apple-glass-dock {
+    height: 64px !important;
+    padding: 0 4px !important;
+    max-width: 95vw !important;
+    gap: 10px !important;
+  }
+  .apple-glass-dock .dock-inner-items {
+    gap: 10px !important;
+  }
+  .apple-glass-dock .dock-item {
+    max-width: 58px !important;
+    max-height: 58px !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .liquidglass {
+    height: 58px !important;
+    padding: 0 8px !important;
+    max-width: 96vw !important;
+  }
+  .apple-glass-dock.dock-container,
+  .apple-glass-dock {
+    height: 58px !important;
+    padding: 0 2px !important;
+    gap: 6px !important;
+  }
+  .apple-glass-dock .dock-inner-items {
+    gap: 6px !important;
+  }
+  .apple-glass-dock .dock-item {
+    max-width: 48px !important;
+    max-height: 48px !important;
+  }
+}
+
+/* Hide SVG glow line */
+.apple-glass-dock .glow-container {
+  display: none !important;
+}
+
+/* Floating clean logos inside dock: NO circle background, NO borders */
+.apple-glass-dock .dock-item,
+.apple-glass-dock .dock-item:hover,
+.apple-glass-dock .dock-item:active,
+.apple-glass-dock .dock-item-active {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  transition: none !important;
+}
+
+.apple-glass-dock .dock-item::before,
+.apple-glass-dock .dock-item::after {
+  display: none !important;
+  content: none !important;
+}
+
+.apple-glass-dock .dock-icon {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Clean, Crisp Natural Dock Logos */
+.dock-logo-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: none;
+}
+
+.dock-logo-img {
+  width: 64% !important;
+  height: 64% !important;
+  max-width: 64% !important;
+  max-height: 64% !important;
+  display: block !important;
+  margin: auto !important;
+  object-fit: contain !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45)) !important;
+  user-select: none;
+  pointer-events: none;
+  transform-origin: center center !important;
+}
+
+@media (max-width: 640px) {
+  .dock-logo-img {
+    width: 62% !important;
+    height: 62% !important;
+    max-width: 62% !important;
+    max-height: 62% !important;
+  }
+}
+
+.dock-logo-search,
+.dock-logo-categories,
+.dock-logo-languages,
+.dock-logo-watchlist {
+  box-shadow: none !important;
+}
+
+.dock-item:hover,
+.dock-item:hover *,
+.apple-glass-dock .dock-item:hover,
+.apple-glass-dock .dock-item:hover * {
+  box-shadow: none !important;
+}
+
+.apple-glass-dock .watch-count {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #ff3366;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── Interactive Concentric Water Droplet Ripple ── */
+.water-ripple {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.25) 35%,
+    transparent 70%
+  );
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 0 16px rgba(255, 255, 255, 0.6),
+    inset 0 0 8px rgba(255, 255, 255, 0.4);
+  animation: water-ripple-animation 0.75s cubic-bezier(0.12, 0.8, 0.32, 1) forwards;
+  z-index: 3;
+}
+
+@keyframes water-ripple-animation {
+  0% {
+    transform: translate(-50%, -50%) scale(0.1);
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(15);
+    opacity: 0;
+  }
+}
+
+/* ── Suspended Droplet Buttons Inside ── */
 .nav-search-btn,
 .nav-filter-btn,
 .nav-watchlist {
@@ -191,52 +509,63 @@ nav.links a:hover::after { width: 100%; }
   align-items: center;
   justify-content: center;
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
   background: transparent;
   border: none;
-  color: #ffffff; /* White icons on dark glass */
+  color: #ffffff;
   cursor: pointer;
   padding: 0;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  z-index: 4;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              filter 0.25s ease;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
 }
 
-/* MacOS Dock Magnification Effect - Hardware Accelerated & Glitch-Free */
+/* No circular or bubble backgrounds around dock logos */
+.dock-item::before,
+.dock-item::after,
+.dock-item:hover::before,
+.dock-item:hover::after {
+  display: none !important;
+  content: none !important;
+}
+
 .dock-item {
-  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), filter 0.2s ease;
-  transform-origin: bottom center;
+  transform-origin: center center;
   will-change: transform;
 }
 
-.dock-item:hover {
-  transform: scale(1.45) translateY(-8px);
-  filter: drop-shadow(0 8px 16px rgba(255,255,255,0.2));
-  z-index: 10;
+/* Only apply hover transform to generic items that are not managed by Framer Motion */
+.popup-tabs-wrapper .dock-item {
+  transform-origin: center center;
 }
 
 /* Tooltip Styles */
 .dock-tooltip {
   position: absolute;
-  top: -40px;
-  background: rgba(20, 20, 20, 0.85);
+  top: -42px;
+  background: rgba(14, 14, 14, 0.88);
   color: #fff;
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 5px 11px;
+  border-radius: 7px;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transform: translateY(10px) scale(0.8);
+  transform: translateY(8px) scale(0.85);
   transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
 }
 
 .dock-item:hover .dock-tooltip {
   opacity: 1;
-  transform: translateY(0) scale(1) scale(0.66); /* compensate for parent scale(1.5) */
+  transform: translateY(0) scale(1) scale(0.77); /* compensate for parent scale(1.3) */
 }
 
 .search-icon { font-size: 0.9rem; }
@@ -274,7 +603,9 @@ nav.links a:hover::after { width: 100%; }
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding-top: 10vh;
+  padding: max(24px, 8vh) 16px max(32px, env(safe-area-inset-bottom, 32px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
@@ -294,27 +625,57 @@ nav.links a:hover::after { width: 100%; }
 }
 
 .popup-close-btn {
+  box-sizing: border-box;
+  flex-shrink: 0 !important;
   position: absolute;
   top: 18px;
   right: 18px;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  font-size: 0.95rem;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  padding: 0;
+  transition: background 0.3s ease, border-color 0.3s ease;
   z-index: 20;
+  outline: none;
 }
-.popup-close-btn:hover {
+
+.popup-close-btn:before,
+.popup-close-btn:after {
+  content: "";
+  width: 16px;
+  height: 2px;
   background: #ffffff;
-  color: #000000;
-  transform: rotate(90deg) scale(1.05);
+  border-radius: 1px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -1px;
+  margin-left: -8px;
+  transition: transform 0.3s ease-out;
+}
+
+.popup-close-btn:before {
+  transform: rotate(-45deg);
+}
+
+.popup-close-btn:after {
+  transform: rotate(45deg);
+}
+
+.popup-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.popup-close-btn:hover:before,
+.popup-close-btn:hover:after {
+  transform: rotate(180deg);
 }
 
 .header-search-form {
@@ -383,10 +744,94 @@ nav.links a:hover::after { width: 100%; }
 }
 
 /* ── Popup Tabs with Animated Background ── */
-.popup-tabs-wrapper {
-  width: 100%;
-  margin-bottom: 18px;
+.header-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
 }
+
+.popup-tabs-wrapper {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  margin-bottom: 24px !important;
+}
+
+.popup-tabs-dock {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 16px !important;
+  margin: 0 auto !important;
+  padding: 6px 20px !important;
+  min-height: 62px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 9999px !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  width: max-content !important;
+  overflow: visible !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+.popup-tabs-dock .dock-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px !important;
+  border-radius: 9999px !important;
+  background: transparent !important;
+  border: 1.5px solid transparent !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+}
+
+.popup-tabs-dock .dock-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.popup-tabs-dock .dock-item.dock-item-active {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.25) !important;
+}
+
+.popup-tabs-dock .dock-logo-img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+  object-fit: contain !important;
+  pointer-events: none;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Optical alignment: normalize visual bounding boxes with uniform scale */
+.popup-tabs-dock .dock-logo-search,
+.popup-tabs-dock .dock-logo-categories,
+.popup-tabs-dock .dock-logo-languages {
+  max-width: 32px !important;
+  max-height: 32px !important;
+  transform: scale(1.0) !important;
+}
+
+/* Bottom floating liquid glass dock with enlarged, perfectly aligned logos */
+.apple-glass-dock .dock-logo-search,
+.apple-glass-dock .dock-logo-categories,
+.apple-glass-dock .dock-logo-languages,
+.apple-glass-dock .dock-logo-watchlist {
+  transform: scale(1.0) !important;
+}
+
 .popup-tabs {
   display: flex;
   justify-content: center;
@@ -530,33 +975,57 @@ nav.links a:hover::after { width: 100%; }
     padding: 12px 16px;
   }
   .logo {
-    font-size: 1.4rem;
+    font-size: clamp(1.2rem, 5.5vw, 1.4rem);
     gap: 8px;
+  }
+  .header-site-logo-img {
+    width: 38px;
+    height: 38px;
   }
   .logo-icon {
     width: 24px;
     height: 24px;
   }
+  .header-search-overlay {
+    padding: max(16px, env(safe-area-inset-top, 16px)) 10px max(24px, env(safe-area-inset-bottom, 24px));
+    align-items: flex-start;
+  }
   .header-search-container {
-    padding: 20px;
-    width: 95vw;
+    padding: 20px 14px 16px;
+    width: 96vw;
+    max-height: calc(100svh - 32px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
-  .popup-tabs {
-    flex-wrap: wrap;
+  .popup-tabs-wrapper {
+    margin-bottom: 10px;
   }
-  .popup-tab {
-    font-size: 0.65rem;
-    padding: 10px;
+  .popup-tabs-dock {
+    gap: 8px !important;
   }
   .popup-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    flex: 1 1 auto;
+    max-height: 50svh;
+    grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+    gap: 6px;
+    padding: 6px 4px 10px;
+  }
+  .popup-chip {
+    padding: 9px 10px;
+    font-size: 0.65rem;
+    gap: 6px;
   }
   .header-search-form input {
-    padding: 16px;
-    font-size: 1rem;
+    padding: 14px 16px;
+    font-size: 0.95rem;
   }
   .header-search-submit {
     padding: 0 16px;
+  }
+  .popup-active-hint {
+    margin-top: 8px;
+    font-size: 0.65rem;
   }
 }
 
@@ -575,4 +1044,392 @@ nav.links a:hover::after { width: 100%; }
   line-height: 1;
   text-shadow: 0 2px 4px rgba(0,0,0,0.8);
   pointer-events: none;
+}
+
+/* ── Search Bar Motion Design (Expanding Down CINEVERSE Header) ── */
+.header-motion-search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: max(78px, 10vh) 16px max(32px, env(safe-area-inset-bottom, 32px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.header-motion-search-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* Ambient Backlight Glow */
+.search-ambient-glow {
+  position: absolute;
+  top: max(72px, 9.5vh);
+  left: 50%;
+  transform: translateX(-50%) scale(0.5);
+  width: min(550px, 90vw);
+  max-width: 90vw;
+  height: 160px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 70%);
+  filter: blur(45px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.8s ease, transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.search-ambient-glow.glow-active {
+  opacity: 0.85;
+  transform: translateX(-50%) scale(1);
+}
+
+.search-ambient-glow.glow-expanded {
+  opacity: 1;
+  width: min(94vw, 880px);
+  transform: translateX(-50%) scale(1.05);
+}
+
+/* Motion Stage */
+.search-motion-stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 820px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Transparent Frosted Glass Expanding Search Pill - NO WHITE BACKGROUND */
+.search-motion-pill {
+  position: relative;
+  z-index: 2;
+  width: 140px;
+  height: 64px;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.13);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  display: flex;
+  align-items: center;
+  padding: 0 14px 0 24px;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: 
+    width 0.85s cubic-bezier(0.18, 1.15, 0.32, 1),
+    box-shadow 0.5s ease,
+    opacity 0.65s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(0.45) translateY(-28px);
+  filter: blur(12px);
+  opacity: 0;
+}
+
+.search-motion-pill.state-initial {
+  width: 140px;
+  transform: scale(1) translateY(0);
+  filter: blur(0px);
+  opacity: 1;
+}
+
+.search-motion-pill.state-expanded {
+  width: min(92vw, 780px);
+  transform: scale(1) translateY(0);
+  filter: blur(0px);
+  opacity: 1;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.search-motion-pill.state-hidden {
+  width: min(92vw, 780px);
+  transform: scale(0.92) translateY(16px);
+  filter: blur(12px);
+  opacity: 0;
+}
+
+/* Subtle glossy light sweep across the frosted glass */
+.search-motion-pill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-25deg);
+  pointer-events: none;
+}
+
+.search-motion-pill.shimmer::after {
+  animation: searchLightSweep 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes searchLightSweep {
+  0% { left: -120%; }
+  100% { left: 160%; }
+}
+
+/* Magnifying Glass SVG Icon in Crisp White */
+.search-motion-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: #ffffff;
+  transform: scale(0.4) rotate(-45deg);
+  opacity: 0;
+  transition: 
+    transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.4s ease;
+}
+
+.search-motion-icon.icon-pop {
+  transform: scale(1) rotate(0deg);
+  opacity: 1;
+}
+
+.search-motion-icon.icon-shift {
+  transform: scale(1.05) rotate(-6deg);
+  opacity: 1;
+}
+
+.search-motion-icon .icon-circle {
+  stroke-dasharray: 110;
+  stroke-dashoffset: 110;
+  transition: stroke-dashoffset 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.1s;
+}
+
+.search-motion-icon .icon-handle {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  transition: stroke-dashoffset 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.25s;
+}
+
+.search-motion-icon.icon-pop .icon-circle,
+.search-motion-icon.icon-shift .icon-circle,
+.search-motion-icon.icon-pop .icon-handle,
+.search-motion-icon.icon-shift .icon-handle {
+  stroke-dashoffset: 0;
+}
+
+/* Form Input - White Text & Semi-transparent Placeholder */
+.search-pill-form {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin-left: 14px;
+  height: 100%;
+}
+
+.search-pill-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 1.12rem;
+  font-weight: 500;
+  color: #ffffff;
+  letter-spacing: -0.015em;
+  padding: 0;
+}
+
+.search-pill-input::placeholder {
+  color: rgba(255, 255, 255, 0.52);
+  font-weight: 400;
+}
+
+.search-pill-clear {
+  background: rgba(255, 255, 255, 0.16);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #ffffff;
+  cursor: pointer;
+  margin-right: 8px;
+  transition: background 0.2s;
+}
+
+.search-pill-clear:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.search-pill-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #09090b;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.search-pill-submit:hover {
+  transform: scale(1.06);
+  background: #f4f4f5;
+}
+
+.search-pill-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  margin-left: 8px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-pill-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* 2nd Image Matching Capsule Panel: [ Search ] Categories Languages */
+.search-capsule-panel {
+  width: 100%;
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+  transition: opacity 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.search-capsule-panel.panel-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Outer dark translucent capsule */
+.search-capsule-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(36, 36, 40, 0.88);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+  padding: 5px 6px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  margin-bottom: 16px;
+}
+
+.search-capsule-tab {
+  height: 38px;
+  padding: 0 22px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: #9a9a9f;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.search-capsule-tab:hover:not(.active) {
+  color: #e4e4e7;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Active pill matches image 2 */
+.search-capsule-tab.active {
+  background: #4f5056;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.search-quick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 720px;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 6px;
+  animation: searchGridFadeIn 0.3s ease;
+}
+
+@keyframes searchGridFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.search-quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d4d4d8;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-quick-chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.search-quick-chip.active {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+  font-weight: 600;
 }

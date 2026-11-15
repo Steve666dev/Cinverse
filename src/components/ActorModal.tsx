@@ -98,9 +98,7 @@ const ActorModal: React.FC<ActorModalProps> = ({ actor, onClose, onSelectMovie }
             id="actorClose"
             onClick={onClose}
             aria-label="Close actor filmography"
-          >
-            ✕
-          </button>
+          />
         </div>
 
         {/* Scroll Progress Bar */}

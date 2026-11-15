@@ -55,22 +55,26 @@ export function CineverseDoodleLogo() {
     <div 
       onMouseEnter={handleMouseEnter}
       style={{ 
-        display: 'flex',
+        display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        height: 'auto', // Allow it to flex
-        padding: '10px 0',
+        padding: 0,
+        margin: 0,
+        lineHeight: 1,
         cursor: 'pointer',
         perspective: '400px' 
       }}
     >
       <div style={{
         fontWeight: '900',
-        fontSize: 'clamp(1.8rem, 5vw, 2.4rem)', // Fluid typography for all devices!
-        letterSpacing: '.15em',
+        fontSize: 'clamp(1.5rem, 3.8vw, 1.95rem)',
+        letterSpacing: '.14em',
+        lineHeight: 1,
         color: '#fff8ec',
-        display: 'flex',
-        textShadow: '0 4px 12px rgba(0,0,0,0.5)'
+        display: 'inline-flex',
+        alignItems: 'center',
+        textShadow: '0 4px 12px rgba(0,0,0,0.5)',
+        userSelect: 'none'
       }}>
         {text.split('').map((char, i) => (
           <span 
@@ -78,6 +82,7 @@ export function CineverseDoodleLogo() {
             ref={(el) => { lettersRef.current[i] = el; }}
             style={{ 
               display: 'inline-block',
+              lineHeight: 1,
               willChange: 'transform, opacity, color' 
             }}
           >

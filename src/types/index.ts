@@ -54,4 +54,7 @@ export interface Movie {
   isAdult?: boolean; // Flag for age restriction
   watchProviders?: WatchProvider[];
   watchUrl?: string; // Direct JustWatch / official watch hub link
+  imdbId?: string;
+  imdbRating?: string;
+  imdbVotes?: string;
 }

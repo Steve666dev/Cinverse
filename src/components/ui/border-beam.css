@@ -1,0 +1,30 @@
+@keyframes border-beam {
+  100% {
+    offset-distance: 100%;
+  }
+}
+
+.magicui-border-beam-wrap {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: calc(var(--border-width, 1.5) * 1px) solid transparent;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  z-index: 20;
+}
+
+.magicui-border-beam-wrap::after {
+  content: "";
+  position: absolute;
+  aspect-ratio: 1 / 1;
+  width: calc(var(--size, 200) * 1px);
+  animation: border-beam calc(var(--duration, 8) * 1s) infinite linear;
+  animation-delay: var(--delay, 0s);
+  background: var(--beam-gradient, linear-gradient(to left, var(--color-from, transparent), var(--color-via, #ef4444), var(--color-to, transparent)));
+  offset-anchor: calc(var(--anchor, 90) * 1%) 50%;
+  offset-path: rect(0 auto auto 0 round var(--border-radius, 16px));
+}

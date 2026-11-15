@@ -1,6 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import type { Movie } from '../types';
 import { useWatchlist } from '../context/WatchlistContext';
+import { BookmarkIcon } from './BookmarkIcon';
+import { fetchTMDBMovieById } from '../data/api';
 import './MovieCard.css';
 
 interface MovieCardProps {
@@ -8,6 +10,9 @@ interface MovieCardProps {
   onClick: () => void;
   isHidden?: boolean;
 }
+
+// Global in-memory set of loaded image URLs to guarantee 0ms instant display across all reels
+const globalLoadedPosters = new Set<string>();
 
 const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false }) => {
   const { watchlist, toggleWatch } = useWatchlist();
@@ -47,14 +52,98 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
     onClick();
   };
 
+  const resolvePosterUrl = (url?: string): string => {
+    if (!url) return '';
+    const clean = url.trim();
+    if (clean.startsWith('http://') || clean.startsWith('https://')) {
+      return clean;
+    }
+    const normalized = clean.startsWith('/') ? clean : `/${clean}`;
+    return `https://image.tmdb.org/t/p/w342${normalized}`;
+  };
+
+  const initialUrl = resolvePosterUrl(movie.img);
+  const [currentSrc, setCurrentSrc] = useState<string>(initialUrl);
   const [imgFailed, setImgFailed] = useState(false);
+  const [isLoaded, setIsLoaded] = useState<boolean>(() => globalLoadedPosters.has(initialUrl));
+
+  // Synchronous probe for memory cache so preloaded images display with 0ms delay
+  useEffect(() => {
+    const nextUrl = resolvePosterUrl(movie.img);
+    if (nextUrl !== currentSrc) {
+      setCurrentSrc(nextUrl);
+      setImgFailed(false);
+    }
+
+    if (!nextUrl) return;
+
+    if (globalLoadedPosters.has(nextUrl)) {
+      setIsLoaded(true);
+      return;
+    }
+
+    const probe = new Image();
+    probe.src = nextUrl;
+    if (probe.complete && probe.naturalWidth > 0) {
+      globalLoadedPosters.add(nextUrl);
+      setIsLoaded(true);
+      return;
+    }
+    probe.onload = () => {
+      globalLoadedPosters.add(nextUrl);
+      setIsLoaded(true);
+    };
+  }, [movie.img, movie.id, currentSrc]);
+
+  // Ref callback to detect when browser already rendered image without firing onLoad
+  const handleImgRef = useCallback((el: HTMLImageElement | null) => {
+    if (el && el.complete && el.naturalWidth > 0) {
+      if (currentSrc) globalLoadedPosters.add(currentSrc);
+      setIsLoaded(true);
+    }
+  }, [currentSrc]);
+
+  const handleLoadSuccess = () => {
+    if (currentSrc) globalLoadedPosters.add(currentSrc);
+    setIsLoaded(true);
+  };
+
+  // Resilient 3-tier fallback on image error
+  const handleImgError = () => {
+    // Tier 1: Fallback from direct TMDB to Cloudflare edge WebP accelerator (bypasses ISP blocks)
+    if (currentSrc.includes('image.tmdb.org') && !currentSrc.includes('wsrv.nl') && !currentSrc.includes('/api/poster-proxy')) {
+      setCurrentSrc(`https://wsrv.nl/?url=${encodeURIComponent(currentSrc)}&w=342&output=webp&q=82`);
+      return;
+    }
+    // Tier 2: Fallback to local server proxy
+    if (currentSrc.includes('wsrv.nl')) {
+      const raw = decodeURIComponent(currentSrc.split('url=')[1]?.split('&')[0] || '');
+      if (raw && raw.includes('image.tmdb.org')) {
+        setCurrentSrc(`/api/poster-proxy?url=${encodeURIComponent(raw)}`);
+        return;
+      }
+    }
+    // Tier 3: Fallback from w342 to w500
+    if (currentSrc.includes('/w342/')) {
+      setCurrentSrc(currentSrc.replace('/w342/', '/w500/'));
+      return;
+    }
+    setImgFailed(true);
+  };
 
   if (isHidden) {
     return <div className="poster-card hidden" aria-hidden="true" />;
   }
 
   return (
-    <div className="poster-card" data-id={movie.id} onMouseLeave={handleMouseOut}>
+    <div
+      className="poster-card"
+      data-id={movie.id}
+      onMouseEnter={() => {
+        if (movie?.id) fetchTMDBMovieById(movie.id).catch(() => {});
+      }}
+      onMouseLeave={handleMouseOut}
+    >
       <div 
         className={`poster-inner ${isClicked ? 'clicked' : ''}`} 
         ref={cardRef}
@@ -63,15 +152,21 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
       >
         {isClicked && <div className="click-ripple"></div>}
         
+        {/* Shimmer skeleton while poster image loads */}
+        {!isLoaded && !imgFailed && <div className="poster-loading-shimmer" />}
+
         {/* Actual Poster Image Frame */}
-        {movie.img && !imgFailed ? (
+        {currentSrc && !imgFailed ? (
           <img 
-            src={movie.img} 
+            ref={handleImgRef}
+            src={currentSrc} 
             alt={movie.t} 
-            className="poster-img"
-            loading="lazy"
+            className={`poster-img ${isLoaded ? 'loaded' : 'loading'}`}
+            loading="eager"
+            decoding="auto"
             referrerPolicy="no-referrer"
-            onError={() => setImgFailed(true)}
+            onLoad={handleLoadSuccess}
+            onError={handleImgError}
           />
         ) : (
           <div className={`poster-fallback motif-${movie.motif}`}>
@@ -88,7 +183,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
         {/* Top Badges */}
         <div className="poster-top-bar">
           {movie.y > 0 && <span className="poster-year-badge">{movie.y}</span>}
-          <span className="poster-rating-badge">★ {movie.r || '7.5'}</span>
+          <span className="poster-rating-badge">★ {typeof movie.r === 'number' ? movie.r.toFixed(1) : movie.r || '7.5'}</span>
         </div>
 
         {/* Bottom Details Block */}
@@ -100,14 +195,14 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, isHidden = false 
           </div>
         </div>
 
-        {/* Watchlist Heart Button */}
+        {/* Watchlist Bookmark Ribbon Button (2-Logo) */}
         <button 
           className={`poster-heart-btn ${isSaved ? 'saved' : ''}`} 
           onClick={handleHeartClick} 
-          aria-label="Save to watchlist"
+          aria-label={isSaved ? "Remove from watchlist" : "Add to watchlist"}
           title={isSaved ? "Remove from watchlist" : "Add to watchlist"}
         >
-          ♥
+          <BookmarkIcon saved={isSaved} size={15} />
         </button>
       </div>
     </div>

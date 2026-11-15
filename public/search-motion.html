@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple / Minimalist Search Bar Motion Graphics Teaser</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Google Font (400, 500, 600) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #000000;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            perspective: 1200px;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Ambient Backlight Glow behind the search pill */
+        .ambient-glow {
+            position: absolute;
+            width: 550px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 70%);
+            filter: blur(45px);
+            opacity: 0;
+            transform: scale(0.5);
+            transition: 
+                opacity 0.9s ease, 
+                transform 1.1s cubic-bezier(0.22, 1, 0.36, 1), 
+                width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .ambient-glow.glow-active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .ambient-glow.glow-expanded {
+            opacity: 1;
+            width: min(95vw, 1100px);
+            transform: scale(1.05);
+        }
+
+        /* Search Pill Container */
+        .search-pill {
+            position: relative;
+            z-index: 1;
+            width: 240px;
+            height: 150px;
+            border-radius: 9999px;
+            background-color: #ffffff;
+            display: flex;
+            align-items: center;
+            padding-left: 52px;
+            padding-right: 52px;
+            box-sizing: border-box;
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.15);
+            /* Elastic spring appearance & expansion curve */
+            transition: 
+                width 0.9s cubic-bezier(0.18, 1.15, 0.32, 1),
+                opacity 0.75s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.75s cubic-bezier(0.34, 1.56, 0.64, 1),
+                filter 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.8s ease;
+            transform: scale(0.35) translateY(50px) rotateX(20deg);
+            filter: blur(14px);
+            opacity: 0;
+        }
+
+        /* Glossy Light Sweep Shimmer across the pill */
+        .search-pill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -120%;
+            width: 55%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(240, 240, 245, 0.7) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: skewX(-25deg);
+            pointer-events: none;
+        }
+
+        .search-pill.shimmer::after {
+            animation: lightSweep 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes lightSweep {
+            0% { left: -120%; }
+            100% { left: 160%; }
+        }
+
+        /* Initial Pop State (00:00) */
+        .search-pill.state-initial {
+            width: 240px;
+            transform: scale(1) translateY(0) rotateX(0deg);
+            filter: blur(0px);
+            opacity: 1;
+        }
+
+        /* Expanded State (00:01 - 00:02) */
+        .search-pill.state-expanded {
+            width: min(92vw, 1080px);
+            transform: scale(1) translateY(0) rotateX(0deg);
+            filter: blur(0px);
+            opacity: 1;
+            box-shadow: 0 30px 80px rgba(255, 255, 255, 0.14), 0 0 0 1px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Micro-pulse bounce on completion */
+        .search-pill.state-complete-pulse {
+            transform: scale(1.018) translateY(0) rotateX(0deg);
+        }
+
+        /* Dim & Depth Blur State (00:03) */
+        .search-pill.state-fadeout {
+            width: min(92vw, 1080px);
+            transform: scale(0.96) translateY(4px);
+            filter: blur(2px);
+            opacity: 0.22;
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.02);
+        }
+
+        /* Sink to Black State */
+        .search-pill.state-hidden {
+            width: min(92vw, 1080px);
+            transform: scale(0.91) translateY(18px);
+            filter: blur(12px);
+            opacity: 0;
+        }
+
+        /* Responsive Mobile Scaling */
+        @media (max-width: 768px) {
+            .search-pill {
+                height: 84px;
+                padding-left: 28px;
+                padding-right: 28px;
+            }
+            .search-pill.state-initial {
+                width: 136px;
+            }
+            .search-icon {
+                width: 34px !important;
+                height: 34px !important;
+            }
+            .search-text {
+                font-size: 24px !important;
+                margin-left: 18px !important;
+            }
+        }
+
+        /* Magnifying Glass SVG Icon */
+        .search-icon {
+            width: 58px;
+            height: 58px;
+            flex-shrink: 0;
+            color: #c4c4c6;
+            transform: scale(0.4) rotate(-45deg);
+            opacity: 0;
+            transition: 
+                transform 0.75s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.45s ease,
+                color 0.4s ease;
+        }
+
+        .search-icon.icon-pop {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+        }
+
+        .search-icon.icon-shift {
+            transform: scale(1.06) rotate(-8deg);
+            color: #9e9ea4;
+        }
+
+        .search-icon.icon-settle {
+            transform: scale(1) rotate(0deg);
+            color: #b8b8be;
+        }
+
+        /* SVG Stroke Drawing Animation */
+        .icon-circle {
+            stroke-dasharray: 110;
+            stroke-dashoffset: 110;
+            transition: stroke-dashoffset 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.1s;
+        }
+
+        .icon-handle {
+            stroke-dasharray: 30;
+            stroke-dashoffset: 30;
+            transition: stroke-dashoffset 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.35s;
+        }
+
+        .search-icon.icon-pop .icon-circle,
+        .search-icon.icon-shift .icon-circle,
+        .search-icon.icon-settle .icon-circle,
+        .search-icon.icon-pop .icon-handle,
+        .search-icon.icon-shift .icon-handle,
+        .search-icon.icon-settle .icon-handle {
+            stroke-dashoffset: 0;
+        }
+
+        /* Typography & Text Container */
+        .search-text {
+            font-size: 50px;
+            font-weight: 400;
+            color: #2b2b2b;
+            margin-left: 34px;
+            white-space: nowrap;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-text.visible {
+            opacity: 1;
+        }
+
+        /* Individual Staggered Animated Characters */
+        .char-span {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(14px) scale(0.85);
+            filter: blur(6px);
+            animation: charPopIn 0.32s cubic-bezier(0.22, 1.35, 0.36, 1) forwards;
+        }
+
+        @keyframes charPopIn {
+            0% {
+                opacity: 0;
+                transform: translateY(14px) scale(0.85);
+                filter: blur(6px);
+            }
+            70% {
+                opacity: 1;
+                filter: blur(0px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                filter: blur(0px);
+            }
+        }
+
+        /* Blinking Caret */
+        .typing-cursor {
+            display: inline-block;
+            width: 3.5px;
+            height: 0.92em;
+            background-color: #2b2b2b;
+            border-radius: 2px;
+            margin-left: 4px;
+            vertical-align: -0.08em;
+            animation: blink 0.75s infinite;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .typing-cursor.hidden-cursor {
+            opacity: 0;
+            transform: scaleY(0);
+            animation: none;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.15; }
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-center relative select-none">
+
+    <!-- Main Animation Stage -->
+    <main class="w-full h-full flex items-center justify-center p-4 relative">
+        <!-- Ambient Backlight Glow -->
+        <div id="ambientGlow" class="ambient-glow"></div>
+
+        <!-- The Search Pill -->
+        <div id="searchPill" class="search-pill">
+            <!-- Magnifying Glass SVG Icon -->
+            <svg id="searchIcon" class="search-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle class="icon-circle" cx="27" cy="27" r="16.5" stroke="currentColor" stroke-width="5.5"/>
+                <path class="icon-handle" d="M39.5 40.5L52 53" stroke="currentColor" stroke-width="5.5" stroke-linecap="round"/>
+            </svg>
+            
+            <!-- Dynamic Typed Text & Caret -->
+            <div id="textWrapper" class="search-text">
+                <span id="typedText"></span><span id="cursor" class="typing-cursor hidden-cursor"></span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Interactive Controls & Timeline HUD -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center gap-3 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 px-4 py-2.5 rounded-2xl shadow-2xl text-zinc-300 text-sm transition-opacity duration-300 hover:opacity-100 opacity-80">
+        <!-- Replay Button -->
+        <button id="replayBtn" class="flex items-center gap-2 bg-white text-black font-medium px-3.5 py-1.5 rounded-xl hover:bg-zinc-200 active:scale-95 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Replay
+        </button>
+
+        <!-- Loop Toggle -->
+        <button id="loopBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-800/70 text-zinc-200 hover:bg-zinc-800 transition">
+            <span id="loopDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="loopLabel">Loop: On</span>
+        </button>
+
+        <!-- Custom Text Input -->
+        <div class="flex items-center gap-2 border-l border-zinc-800 pl-3">
+            <label for="customInput" class="text-xs text-zinc-400 hidden sm:inline">Text:</label>
+            <input 
+                id="customInput" 
+                type="text" 
+                value="Best motion design tool" 
+                maxlength="34"
+                class="bg-zinc-950/90 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-zinc-500 w-44 sm:w-52"
+                placeholder="Type custom search..."
+            />
+        </div>
+
+        <!-- Live Timecode Indicator -->
+        <div class="border-l border-zinc-800 pl-3 font-mono text-xs text-zinc-400 min-w-[48px] text-center" id="timecode">
+            00:00
+        </div>
+    </div>
+
+    <!-- Jitter.video Watermark Badge -->
+    <div class="fixed bottom-3 right-3 text-[11px] font-medium text-zinc-500 bg-zinc-900/60 px-2 py-0.5 rounded pointer-events-none">
+        jitter.video
+    </div>
+
+    <script>
+        const searchPill = document.getElementById('searchPill');
+        const searchIcon = document.getElementById('searchIcon');
+        const ambientGlow = document.getElementById('ambientGlow');
+        const textWrapper = document.getElementById('textWrapper');
+        const typedText = document.getElementById('typedText');
+        const cursor = document.getElementById('cursor');
+        const replayBtn = document.getElementById('replayBtn');
+        const loopBtn = document.getElementById('loopBtn');
+        const loopDot = document.getElementById('loopDot');
+        const loopLabel = document.getElementById('loopLabel');
+        const customInput = document.getElementById('customInput');
+        const timecodeEl = document.getElementById('timecode');
+
+        let isLooping = true;
+        let animationTimeouts = [];
+        let typingInterval = null;
+        let timecodeInterval = null;
+
+        // Clear all active timers before starting a fresh run
+        function clearAllTimers() {
+            animationTimeouts.forEach(t => clearTimeout(t));
+            animationTimeouts = [];
+            if (typingInterval) clearInterval(typingInterval);
+            if (timecodeInterval) clearInterval(timecodeInterval);
+        }
+
+        // Helper to schedule timeline steps cleanly
+        function schedule(fn, delay) {
+            const id = setTimeout(fn, delay);
+            animationTimeouts.push(id);
+        }
+
+        // Exact 4-second timeline matching keyframe requirements
+        function playAnimation() {
+            clearAllTimers();
+
+            const targetString = customInput.value.trim() || "Best motion design tool";
+            let startTime = Date.now();
+
+            // 0ms (Reset): reset timecode display, classes, and elements
+            timecodeEl.textContent = "00:00";
+            timecodeInterval = setInterval(() => {
+                const elapsedSec = Math.min(3, Math.floor((Date.now() - startTime) / 1000));
+                timecodeEl.textContent = `00:0${elapsedSec}`;
+            }, 100);
+
+            searchPill.className = 'search-pill';
+            searchIcon.className.baseVal = 'search-icon';
+            ambientGlow.className = 'ambient-glow';
+            textWrapper.classList.remove('visible');
+            cursor.classList.add('hidden-cursor');
+            typedText.innerHTML = '';
+
+            // 60ms (00:00 - Initial Pop): Pill springs into center + SVG draws strokes & rotates
+            schedule(() => {
+                searchPill.classList.add('state-initial');
+                searchIcon.classList.add('icon-pop');
+                ambientGlow.classList.add('glow-active');
+            }, 60);
+
+            // 650ms (00:01 - Expand & Shimmer): Pill expands to full width, shimmer sweeps, icon shifts, cursor appears
+            schedule(() => {
+                searchPill.classList.remove('state-initial');
+                searchPill.classList.add('state-expanded', 'shimmer');
+                searchIcon.classList.add('icon-shift');
+                ambientGlow.classList.add('glow-expanded');
+                textWrapper.classList.add('visible');
+                cursor.classList.remove('hidden-cursor');
+            }, 650);
+
+            // 850ms to 2100ms (00:01 to 00:02 - Per-Letter Staggered Pop-In)
+            schedule(() => {
+                let charIndex = 0;
+                const totalTypingDuration = 1250; // finishes around 2100ms
+                const charDelay = totalTypingDuration / targetString.length;
+
+                typingInterval = setInterval(() => {
+                    if (charIndex < targetString.length) {
+                        const char = targetString[charIndex];
+                        const span = document.createElement('span');
+                        span.className = 'char-span';
+                        span.innerHTML = char === ' ' ? '&nbsp;' : char;
+                        typedText.appendChild(span);
+                        charIndex++;
+                    } else {
+                        clearInterval(typingInterval);
+                        // Completion Micro-Pulse & settle icon
+                        searchIcon.classList.remove('icon-shift');
+                        searchIcon.classList.add('icon-settle');
+                        searchPill.classList.add('state-complete-pulse');
+                        schedule(() => {
+                            searchPill.classList.remove('state-complete-pulse');
+                            cursor.classList.add('hidden-cursor');
+                        }, 220);
+                    }
+                }, charDelay);
+            }, 850);
+
+            // 2850ms (00:03 - Dim & Depth Blur): Dimmed fade-out state & ambient glow fades
+            schedule(() => {
+                searchPill.classList.remove('state-expanded', 'shimmer');
+                searchPill.classList.add('state-fadeout');
+                ambientGlow.classList.remove('glow-expanded', 'glow-active');
+            }, 2850);
+
+            // 3650ms (Sink to Black): Completely hidden
+            schedule(() => {
+                searchPill.classList.remove('state-fadeout');
+                searchPill.classList.add('state-hidden');
+            }, 3650);
+
+            // 4350ms (Loop Handler): Restart if loop is enabled
+            schedule(() => {
+                clearInterval(timecodeInterval);
+                if (isLooping) {
+                    playAnimation();
+                }
+            }, 4350);
+        }
+
+        // HUD Controls Event Listeners
+        replayBtn.addEventListener('click', () => {
+            playAnimation();
+        });
+
+        loopBtn.addEventListener('click', () => {
+            isLooping = !isLooping;
+            loopDot.className = `w-2 h-2 rounded-full ${isLooping ? 'bg-emerald-400' : 'bg-zinc-500'}`;
+            loopLabel.textContent = `Loop: ${isLooping ? 'On' : 'Off'}`;
+        });
+
+        customInput.addEventListener('input', () => {
+            playAnimation();
+        });
+
+        // Start animation automatically on load
+        window.addEventListener('load', () => {
+            playAnimation();
+        });
+    </script>
+</body>
+</html>
