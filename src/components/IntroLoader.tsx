@@ -16,43 +16,43 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   useGSAP(() => {
-    // 1. Pristine, majestic cinematic title reveal animation
+    // 1. Pristine, majestic cinematic title reveal animation (slowed down for graceful experience)
     if (titleRef.current) {
       const chars = titleRef.current.querySelectorAll('.intro-char');
       gsap.fromTo(
         chars,
         {
           opacity: 0,
-          y: 24,
-          scale: 0.88,
-          filter: 'blur(10px)',
+          y: 20,
+          scale: 0.92,
+          filter: 'blur(8px)',
         },
         {
           opacity: 1,
           y: 0,
           scale: 1,
           filter: 'blur(0px)',
-          duration: 0.85,
-          stagger: 0.045,
+          duration: 1.2,
+          stagger: 0.06,
           ease: 'power3.out',
         }
       );
 
       gsap.to(titleRef.current, {
-        letterSpacing: '0.24em',
-        duration: 2.0,
-        ease: 'sine.out',
+        letterSpacing: '0.22em',
+        duration: 3.0,
+        ease: 'power1.out',
       });
     }
 
     // 2. Canvas particle constellation background
     const c = canvasRef.current;
     if (!c) return;
-    const ctx = c.getContext("2d");
+    const ctx = c.getContext('2d');
     if (!ctx) return;
 
-    let cw = (c.width = window.innerWidth);
-    let ch = (c.height = window.innerHeight);
+    let cw = window.innerWidth;
+    let ch = window.innerHeight;
     let radius = Math.max(cw, ch);
     const particles = Array(99).fill(null);
     let tl: gsap.core.Timeline | null = null;
@@ -64,6 +64,21 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
     // TMDB API Key from environment
     const API_KEY = (import.meta.env.VITE_TMDB_API_KEY || '').trim();
     const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w200';
+
+    function updateCanvasSize() {
+      if (!c) return;
+      const rect = containerRef.current?.getBoundingClientRect() || c.getBoundingClientRect();
+      cw = rect.width || window.innerWidth;
+      ch = rect.height || window.innerHeight;
+      radius = Math.max(cw, ch);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      c.width = Math.round(cw * dpr);
+      c.height = Math.round(ch * dpr);
+      c.style.width = `${cw}px`;
+      c.style.height = `${ch}px`;
+    }
+
+    updateCanvasSize();
 
     // Fetches unique movies fast without endless loops
     async function fetchUniqueMovies(count: number, _pages: number = 1) {
@@ -97,22 +112,28 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
     }
 
     async function init() {
-      // 1. Fetch just 1 page (fast) to start the animation cleanly with real posters
-      let posters = await fetchUniqueMovies(20, 1);
+      const posters: string[] = [];
 
-      // If empty or offline, fallback to static cache posters
-      if (posters.length === 0) {
-        try {
-          const cRes = await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null);
-          if (cRes && cRes.ok) {
-            const cData = await cRes.json().catch(() => null);
-            if (Array.isArray(cData?.movies)) {
-              for (const m of cData.movies) {
-                if (m.posterUrl) posters.push(m.posterUrl);
+      // 1. Instant priority: cached theatrical posters from local disk/CDN
+      try {
+        const cRes = await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null);
+        if (cRes && cRes.ok) {
+          const cData = await cRes.json().catch(() => null);
+          if (Array.isArray(cData?.movies)) {
+            for (const m of cData.movies) {
+              if (m.posterUrl && !seenPosters.has(m.posterUrl)) {
+                seenPosters.add(m.posterUrl);
+                posters.push(m.posterUrl);
               }
             }
           }
-        } catch {}
+        }
+      } catch {}
+
+      // 2. Fetch TMDB unique movies to supplement
+      if (posters.length < 20) {
+        const tmdbPosters = await fetchUniqueMovies(20 - posters.length, 1);
+        posters.push(...tmdbPosters);
       }
 
       if (!isActive) return;
@@ -125,7 +146,6 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
           rotate: 0,
           img: new Image()
         };
-        // Wrap around the available posters
         if (posters.length > 0) {
           particles[i].img.src = posters[i % posters.length];
         }
@@ -134,10 +154,9 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
       if (!isActive) return;
       startAnimation();
       
-      // 2. Fetch the rest in the background to add variety
+      // 3. Fetch the rest in the background to add variety
       fetchUniqueMovies(particles.length, 3).then(realPosters => {
         if (!isActive || realPosters.length === 0) return;
-        
         for (let i = 0; i < particles.length; i++) {
           const nextImg = new Image();
           nextImg.onload = () => {
@@ -152,8 +171,7 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
           clearInterval(intervalId);
           return;
         }
-        let newPosters = await fetchUniqueMovies(particles.length, 3);
-        
+        const newPosters = await fetchUniqueMovies(particles.length, 3);
         if (newPosters.length > 0 && isActive) {
           for (let i = 0; i < particles.length; i++) {
             const nextImg = new Image();
@@ -167,39 +185,46 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
     }
 
     function startAnimation() {
-      tl = gsap.timeline({onUpdate:draw})
+      // Gentle, slower swirl so the user can actually experience the posters and atmosphere
+      tl = gsap.timeline({ onUpdate: draw })
         .fromTo(particles, {
-          x:(i)=> {
-            const angle = (i/particles.length * Math.PI *2)- Math.PI/2;
-            return Math.cos(angle*10) * radius;
+          x: (i) => {
+            const angle = (i / particles.length * Math.PI * 2) - Math.PI / 2;
+            return Math.cos(angle * 10) * radius;
           },
-          y:(i)=> {
-            const angle = (i/particles.length * Math.PI *2)- Math.PI/2;
-            return Math.sin(angle*10) * radius;
+          y: (i) => {
+            const angle = (i / particles.length * Math.PI * 2) - Math.PI / 2;
+            return Math.sin(angle * 10) * radius;
           },
           scale: 1.1,
           rotate: 0
-        },{
-          duration: 5,
+        }, {
+          duration: 9.5, // Graceful, slower vortex speed
           ease: "sine.inOut",
           x: 0,
           y: 0,
           scale: 0,
-          rotate: -3,
-          stagger:{each:-0.05, repeat:-1}
+          rotate: -2.5,
+          stagger: { each: -0.09, repeat: -1 }
         }, 0)
         .seek(99);
     }
 
-    function draw(){  
-      particles.sort( (a,b) => a.scale - b.scale ); 
-      if (!ctx) return;
+    function draw() {  
+      particles.sort((a, b) => a.scale - b.scale); 
+      if (!ctx || !c) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      ctx.save();
+      ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, cw, ch);
       ctx.imageSmoothingEnabled = true; 
 
+      const centerX = cw / 2;
+      const centerY = ch / 2;
+
       particles.forEach((p) => {
-        ctx.translate(cw / 2, ch / 2);
-        ctx.rotate( p.rotate );
+        ctx.translate(centerX, centerY);
+        ctx.rotate(p.rotate);
         
         const w = p.img?.width ? p.img.width * p.scale : 0;
         const h = p.img?.height ? p.img.height * p.scale : 0;
@@ -207,21 +232,19 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
         if (w && h) {
           ctx.drawImage(
             p.img,
-            Math.round(p.x - w/2),
-            Math.round(p.y - h/2),
+            Math.round(p.x - w / 2),
+            Math.round(p.y - h / 2),
             Math.round(w),
             Math.round(h)
           );
         }
         ctx.resetTransform();
       });
+      ctx.restore();
     }
 
     const handleResize = () => {
-      if (!c) return;
-      cw = c.width = innerWidth;
-      ch = c.height = innerHeight;
-      radius = Math.max(cw,ch);
+      updateCanvasSize();
       if (tl) tl.invalidate();
     };
 

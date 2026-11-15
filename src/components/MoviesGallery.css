@@ -12,6 +12,7 @@
   flex-direction: column;
   justify-content: space-between;
   user-select: none;
+  touch-action: pan-y;
 }
 
 /* Background canvas covering the hero */
@@ -22,6 +23,7 @@
   height: 100%;
   z-index: 1;
   cursor: grab;
+  touch-action: none;
 }
 
 .a24-experience-canvas:active {

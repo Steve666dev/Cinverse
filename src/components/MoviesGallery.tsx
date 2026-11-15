@@ -1363,8 +1363,118 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
     window.addEventListener('keydown', handleKeyDown);
 
+    // 9. Full Mobile & Tablet Touch / Swipe Gesture Interaction
+    const heroEl: HTMLElement | null = containerRef.current || domEl;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let isTouchActive = false;
+    let isHorizontalSwipe = false;
+    let isVerticalCdSwipe = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (
+        document.body.style.overflow === 'hidden' ||
+        document.getElementById('modalCard') ||
+        document.querySelector('.header-motion-search-overlay.open') ||
+        document.querySelector('.trailer-lightbox')
+      ) {
+        return;
+      }
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      touchStartTime = performance.now();
+      isTouchActive = true;
+      isHorizontalSwipe = false;
+      isVerticalCdSwipe = false;
+      hasDraggedRef.current = false;
+      startProgressRef.current = animStateRef.current.progress;
+      gsap.killTweensOf(animStateRef.current);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isTouchActive || e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchStartX;
+      const dy = touch.clientY - touchStartY;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      if (!isHorizontalSwipe && !isVerticalCdSwipe) {
+        if (absDx > 8 && absDx > absDy) {
+          isHorizontalSwipe = true;
+          hasDraggedRef.current = true;
+        } else if (absDy > 10 && absDy > absDx && checkIsOverCdCircle(touchStartX, touchStartY)) {
+          isVerticalCdSwipe = true;
+          hasDraggedRef.current = true;
+        }
+      }
+
+      if (isHorizontalSwipe) {
+        if (e.cancelable) e.preventDefault();
+        const scrub = -dx / (window.innerWidth * 0.45);
+        const total = filmsRef.current.length || 1;
+        const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + scrub));
+        animStateRef.current.progress = nextP;
+        setActiveIndex(Math.round(nextP));
+      } else if (isVerticalCdSwipe) {
+        if (e.cancelable) e.preventDefault();
+        const scrub = dy / (window.innerHeight * 0.45);
+        const total = filmsRef.current.length || 1;
+        const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + scrub));
+        animStateRef.current.progress = nextP;
+        setActiveIndex(Math.round(nextP));
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!isTouchActive) return;
+      isTouchActive = false;
+
+      if (hasDraggedRef.current) {
+        const touch = e.changedTouches[0];
+        const dx = touch ? touch.clientX - touchStartX : 0;
+        const dy = touch ? touch.clientY - touchStartY : 0;
+        const elapsed = Math.max(1, performance.now() - touchStartTime);
+        const vx = dx / elapsed;
+
+        let targetIndex = Math.round(animStateRef.current.progress);
+        if (isHorizontalSwipe) {
+          if (Math.abs(vx) > 0.3 || Math.abs(dx) > 35) {
+            targetIndex = dx < 0 ? Math.ceil(startProgressRef.current) : Math.floor(startProgressRef.current);
+            if (targetIndex === activeIndexRef.current) {
+              targetIndex = dx < 0 ? activeIndexRef.current + 1 : activeIndexRef.current - 1;
+            }
+          }
+        } else if (isVerticalCdSwipe) {
+          if (Math.abs(dy) > 25) {
+            targetIndex = dy < 0 ? activeIndexRef.current + 1 : activeIndexRef.current - 1;
+          }
+        }
+
+        const total = filmsRef.current.length || 1;
+        targetIndex = Math.max(0, Math.min(total - 1, targetIndex));
+        glideToIndex(targetIndex);
+      }
+    };
+
+    if (heroEl) {
+      heroEl.addEventListener('touchstart', handleTouchStart as EventListener, { passive: true });
+      heroEl.addEventListener('touchmove', handleTouchMove as EventListener, { passive: false });
+      heroEl.addEventListener('touchend', handleTouchEnd as EventListener, { passive: true });
+      heroEl.addEventListener('touchcancel', handleTouchEnd as EventListener, { passive: true });
+    }
+
     // Cleanup on unmount
     return () => {
+      if (heroEl) {
+        heroEl.removeEventListener('touchstart', handleTouchStart as EventListener);
+        heroEl.removeEventListener('touchmove', handleTouchMove as EventListener);
+        heroEl.removeEventListener('touchend', handleTouchEnd as EventListener);
+        heroEl.removeEventListener('touchcancel', handleTouchEnd as EventListener);
+      }
       galleryObserver?.disconnect();
       cancelAnimationFrame(reqId);
       if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
