@@ -1,0 +1,63 @@
+[
+  {
+    "id": 1794630954929,
+    "email": "cinema.fan@example.com",
+    "subject": "Loving the transparent dock",
+    "description": "The new black and white theme looks so clean and modern! Dock effect is super smooth.",
+    "receivedAt": "2026-11-14T04:35:54.929Z"
+  },
+  {
+    "id": 1794630801385,
+    "email": "cinema.fan@example.com",
+    "subject": "Loving the transparent dock",
+    "description": "The new black and white theme looks so clean and modern! Dock effect is super smooth.",
+    "receivedAt": "2026-11-14T04:33:21.385Z"
+  },
+  {
+    "id": 1794629209975,
+    "email": "alex.cinematix@example.com",
+    "subject": "Add Watched / Seen Button",
+    "description": "Would love a button to mark stuff as already seen so recommendations stay fresh.",
+    "receivedAt": "2026-11-14T04:06:49.975Z"
+  },
+  {
+    "id": 1794581435458,
+    "rating": 2,
+    "primaryIssue": "Irrelevant to my preferences",
+    "tags": [
+      "Already seen these",
+      "Too repetitive"
+    ],
+    "comments": "Most of the recommended titles are things I watched years ago. \nWould love a button to mark stuff as already seen.",
+    "context": {
+      "userType": "Returning User (Logged in: Yes)",
+      "targetTray": "\"Trending For You\" (Row 2)",
+      "query": "Genre = Sci-Fi | Year = 2020-2025",
+      "itemsShown": "[ID: 1042, ID: 8821, ID: 3319, ID: 5504]",
+      "device": "Chrome 122 / Android",
+      "timestamp": "13 Nov 2026, 19:56 IST"
+    },
+    "formatted": "==================================================\nNEW USER FEEDBACK\n==================================================\n\n1. USER RATING & SUMMARY\n--------------------------------------------------\nRating:        ⭐⭐☆☆☆ (2 / 5)\nPrimary Issue: Irrelevant to my preferences\nTags:          [Already seen these] [Too repetitive]\n\n2. USER COMMENTS\n--------------------------------------------------\n\"Most of the recommended titles are things I watched years ago. \nWould love a button to mark stuff as already seen.\"\n\n3. CONTEXT & METADATA (Auto-Captured)\n--------------------------------------------------\nUser Type:       Returning User (Logged in: Yes)\nTarget Page/Tray: \"Trending For You\" (Row 2)\nCurrent Query:   Genre = Sci-Fi | Year = 2020-2025\nItems Shown:     [ID: 1042, ID: 8821, ID: 3319, ID: 5504]\nDevice / OS:     Chrome 122 / Android\n\n4. TIMED STAMP\n--------------------------------------------------\nSubmitted:       13 Nov 2026, 19:56 IST",
+    "receivedAt": "2026-11-13T14:50:35.458Z"
+  },
+  {
+    "id": 1794580580975,
+    "rating": 2,
+    "primaryIssue": "Irrelevant to my preferences",
+    "tags": [
+      "Already seen these",
+      "Too repetitive"
+    ],
+    "comments": "Most of the recommended titles are things I watched years ago. \nWould love a button to mark stuff as already seen.",
+    "context": {
+      "userType": "Returning User (Logged in: Yes)",
+      "targetTray": "\"Trending For You\" (Row 2)",
+      "query": "Genre = Sci-Fi | Year = 2020-2025",
+      "itemsShown": "[ID: 1042, ID: 8821, ID: 3319, ID: 5504]",
+      "device": "Chrome 122 / Android",
+      "timestamp": "13 Nov 2026, 19:56 IST"
+    },
+    "formatted": "==================================================\nNEW USER FEEDBACK\n==================================================\n\n1. USER RATING & SUMMARY\n--------------------------------------------------\nRating:        ⭐⭐☆☆☆ (2 / 5)\nPrimary Issue: Irrelevant to my preferences\nTags:          [Already seen these] [Too repetitive]\n\n2. USER COMMENTS\n--------------------------------------------------\n\"Most of the recommended titles are things I watched years ago. \nWould love a button to mark stuff as already seen.\"\n\n3. CONTEXT & METADATA (Auto-Captured)\n--------------------------------------------------\nUser Type:       Returning User (Logged in: Yes)\nTarget Page/Tray: \"Trending For You\" (Row 2)\nCurrent Query:   Genre = Sci-Fi | Year = 2020-2025\nItems Shown:     [ID: 1042, ID: 8821, ID: 3319, ID: 5504]\nDevice / OS:     Chrome 122 / Android\n\n4. TIMED STAMP\n--------------------------------------------------\nSubmitted:       13 Nov 2026, 19:56 IST",
+    "receivedAt": "2026-11-13T14:36:20.975Z"
+  }
+]

@@ -410,19 +410,35 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
               let runtime = tmdbMovie.runtime ? `${tmdbMovie.runtime} min` : undefined;
               let genre = tmdbMovie.genres?.[0]?.name;
 
-              if (omdbKey && imdbId && /^tt\d{7,10}$/.test(imdbId)) {
-                try {
-                  const oRes = await fetch(`https://www.omdbapi.com/?apikey=${omdbKey}&i=${imdbId}&plot=full`).catch(() => null);
-                  if (oRes && oRes.ok) {
-                    const omdb = await oRes.json().catch(() => null);
-                    if (omdb && omdb.Response !== 'False') {
-                      if (omdb.imdbRating && omdb.imdbRating !== 'N/A') omdbRating = omdb.imdbRating;
-                      if (omdb.imdbVotes && omdb.imdbVotes !== 'N/A') omdbVotes = omdb.imdbVotes;
-                      if (omdb.Runtime && omdb.Runtime !== 'N/A') runtime = omdb.Runtime;
-                      if (omdb.Genre && omdb.Genre !== 'N/A') genre = omdb.Genre;
+              if (imdbId && /^tt\d{7,10}$/.test(imdbId)) {
+                if (omdbKey) {
+                  try {
+                    const oRes = await fetch(`https://www.omdbapi.com/?apikey=${omdbKey}&i=${imdbId}&plot=full`).catch(() => null);
+                    if (oRes && oRes.ok) {
+                      const omdb = await oRes.json().catch(() => null);
+                      if (omdb && omdb.Response !== 'False') {
+                        if (omdb.imdbRating && omdb.imdbRating !== 'N/A') omdbRating = omdb.imdbRating;
+                        if (omdb.imdbVotes && omdb.imdbVotes !== 'N/A') omdbVotes = omdb.imdbVotes;
+                        if (omdb.Runtime && omdb.Runtime !== 'N/A') runtime = omdb.Runtime;
+                        if (omdb.Genre && omdb.Genre !== 'N/A') genre = omdb.Genre;
+                      }
                     }
-                  }
-                } catch {}
+                  } catch {}
+                }
+
+                // If OMDb was unavailable or returned N/A, check live IMDb resolver endpoint
+                if (!omdbVotes || omdbRating === '7.5' || (tmdbMovie.vote_average && omdbRating === tmdbMovie.vote_average.toFixed(1))) {
+                  try {
+                    const lRes = await fetch(`/api/imdb-rating?id=${encodeURIComponent(imdbId)}`).catch(() => null);
+                    if (lRes && lRes.ok) {
+                      const lData = await lRes.json().catch(() => null);
+                      if (lData && lData.ok && lData.rating) {
+                        omdbRating = lData.rating;
+                        if (lData.votes) omdbVotes = lData.votes;
+                      }
+                    }
+                  } catch {}
+                }
               }
 
               const releaseYear = parseInt(rawDateISO.slice(0, 4), 10) || new Date().getFullYear();
@@ -475,7 +491,45 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       setIsApiLoading(true);
       const deviceToday = getDeviceToday();
 
-      // 1. Direct high-speed client-side TMDB discovery
+      // 1. Primary: query backend /api/movies (Express server locally or Vercel serverless function)
+      try {
+        const res = await fetch(`/api/movies?today=${deviceToday.iso}&tz=${encodeURIComponent(deviceToday.tz)}`);
+        if (res.ok) {
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = await res.json();
+            if (!isCancelled && data?.ok && Array.isArray(data.movies) && data.movies.length > 0) {
+              const applied = applyFilmList(data.movies, deviceToday);
+              if (applied) {
+                setIsApiLoading(false);
+                return;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('/api/movies backend unreachable:', err);
+      }
+
+      // 2. Secondary fallback: direct static CDN cache from /data/cache/
+      try {
+        const cacheRes = (await fetch(`/data/cache/${deviceToday.iso}_IN_TMDB.json`).catch(() => null))
+          || (await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null));
+        if (cacheRes && cacheRes.ok) {
+          const data = await cacheRes.json();
+          if (!isCancelled && data?.ok && Array.isArray(data.movies) && data.movies.length > 0) {
+            const applied = applyFilmList(data.movies, deviceToday);
+            if (applied) {
+              setIsApiLoading(false);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Static cache fallback unreachable:', err);
+      }
+
+      // 3. Tertiary fallback: client-side dynamic TMDB discovery
       try {
         const directFilms = await fetchClientDirectTheatricalFilms(deviceToday);
         if (!isCancelled && directFilms.length > 0) {
@@ -489,36 +543,12 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         console.warn('Client direct TMDB discovery:', err);
       }
 
-      // 2. Secondary fallback: query backend /api/movies (for local Express development)
-      fetch(`/api/movies?today=${deviceToday.iso}&tz=${encodeURIComponent(deviceToday.tz)}`)
-        .then(async (res) => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const contentType = res.headers.get('content-type') || '';
-          if (!contentType.includes('application/json')) throw new Error('Non-JSON response from server');
-          return res.json();
-        })
-        .then((data) => {
-          if (!isCancelled) {
-            if (data?.ok && Array.isArray(data.movies) && data.movies.length > 0) {
-              const applied = applyFilmList(data.movies, deviceToday);
-              if (applied) return;
-            }
-            setFilms([]);
-            setApiError("Couldn't load verified releases");
-            onHeroReadyRef.current?.();
-          }
-        })
-        .catch((err) => {
-          console.warn('/api/movies backend unreachable:', err);
-          if (!isCancelled) {
-            setFilms([]);
-            setApiError("Couldn't load verified releases");
-            onHeroReadyRef.current?.();
-          }
-        })
-        .finally(() => {
-          if (!isCancelled) setIsApiLoading(false);
-        });
+      if (!isCancelled) {
+        setFilms([]);
+        setApiError("Couldn't load verified releases");
+        onHeroReadyRef.current?.();
+        setIsApiLoading(false);
+      }
     };
 
     // Load films on mount
@@ -1383,7 +1413,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
                   <p className="a24-paragraph-m" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ background: '#f5c518', color: '#000000', fontSize: '0.65rem', fontWeight: 900, padding: '2px 6px', borderRadius: '3px', letterSpacing: '0.04em' }}>IMDb</span>
                     <span style={{ color: '#f5c518', fontWeight: 800 }}>★ {activeFilm.imdbRating || (activeFilm.rating ? String(activeFilm.rating) : 'N/A')}/10</span>
-                    <span style={{ color: '#888', fontSize: '0.75rem' }}>{activeFilm.imdbVotes ? `(${activeFilm.imdbVotes})` : ''}</span>
+                    <span style={{ color: '#888', fontSize: '0.75rem' }}>{activeFilm.imdbVotes ? `(${String(activeFilm.imdbVotes).replace(/\s*votes$/i, '')})` : ''}</span>
                   </p>
                 </div>
 
