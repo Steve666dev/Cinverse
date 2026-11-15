@@ -11,13 +11,13 @@
   background: #08090a;
   z-index: 99999;
   overflow: hidden;
-  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.65s ease;
+  transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1), transform 0.85s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.85s ease;
   user-select: none;
 }
 
 .intro-loader.fade-out {
   opacity: 0;
-  transform: scale(1.02);
+  transform: scale(1.04);
   visibility: hidden;
   pointer-events: none;
 }
@@ -30,14 +30,14 @@
   z-index: 1;
 }
 
-/* Vignette overlay to spotlight title */
+/* Vignette overlay to spotlight title with atmospheric depth */
 .intro-overlay {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at center, rgba(8, 9, 10, 0.45) 0%, rgba(8, 9, 10, 0.88) 100%);
+  background: radial-gradient(circle at center, rgba(8, 9, 10, 0.50) 0%, rgba(8, 9, 10, 0.90) 80%);
   z-index: 2;
   pointer-events: none;
 }
@@ -56,8 +56,17 @@
   box-sizing: border-box;
 }
 
+@keyframes introGlowPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 16px rgba(147, 197, 253, 0.35)) drop-shadow(0 0 35px rgba(96, 165, 250, 0.2));
+  }
+  50% {
+    filter: drop-shadow(0 0 24px rgba(147, 197, 253, 0.6)) drop-shadow(0 0 55px rgba(96, 165, 250, 0.35));
+  }
+}
+
 .intro-title {
-  font-size: clamp(1.8rem, 7vw, 5.5rem);
+  font-size: clamp(2.0rem, 7.5vw, 5.5rem);
   font-family: 'Bebas Neue', sans-serif;
   letter-spacing: 0.16em;
   text-indent: 0.16em; /* Perfectly balances trailing letter-spacing to center the word exactly */
@@ -68,9 +77,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  max-width: 92vw;
+  max-width: 94vw;
   box-sizing: border-box;
   white-space: nowrap;
+  animation: introGlowPulse 3.2s ease-in-out infinite;
 }
 
 .intro-char {
