@@ -727,32 +727,40 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     gsap.killTweensOf(disc.rotation);
     gsap.killTweensOf(disc.position);
 
-    const startY = disc.rotation.y;
-    const origZ = disc.position.z;
-
-    // 1. Full 360-degree rotation cleanly around vertical Y-axis
-    gsap.to(disc.rotation, {
-      y: startY - Math.PI * 2,
-      duration: 0.95,
-      ease: 'power2.inOut',
+    const spinTimeline = gsap.timeline({
       onComplete: () => {
+        // Ensure resting transformation is exact without any angle or depth snapping
         disc.rotation.y = 0;
         disc.rotation.z = 0;
-        disc.position.z = origZ;
+        disc.position.z = 0;
         spinningDiscIdxRef.current = null;
         isSpinningRef.current = false;
-        onFinish?.();
+
+        // Clean breathing gap so Three.js renders the settled resting frame before modal fades in
+        setTimeout(() => {
+          onFinish?.();
+        }, 80);
       }
     });
 
-    // 2. Tactile 3D forward floating elevation pop
-    gsap.to(disc.position, {
-      z: origZ + 0.35,
-      duration: 0.47,
-      yoyo: true,
-      repeat: 1,
+    // 1. One complete, smooth 360-degree rotation that lands seamlessly at -Math.PI * 2 (0° at center)
+    spinTimeline.to(disc.rotation, {
+      y: -Math.PI * 2,
+      duration: 0.90,
+      ease: 'power2.inOut'
+    }, 0);
+
+    // 2. Smooth elevation pop forward and return directly to 0 (active center z-depth)
+    spinTimeline.to(disc.position, {
+      z: 0.36,
+      duration: 0.45,
       ease: 'power2.out'
-    });
+    }, 0);
+    spinTimeline.to(disc.position, {
+      z: 0,
+      duration: 0.45,
+      ease: 'power2.in'
+    }, 0.45);
   }, []);
 
   const triggerSpinRef = useRef<(film: A24Film, disc?: THREE.Group, discIndex?: number, onFinish?: () => void) => void>(() => {});

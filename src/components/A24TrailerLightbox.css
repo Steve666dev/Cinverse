@@ -21,6 +21,7 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
   box-sizing: border-box;
+  opacity: 0;
 }
 
 .a24-trailer-modal-backdrop::-webkit-scrollbar {
@@ -48,6 +49,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  opacity: 0;
 }
 
 .a24-trailer-modal-card * {
