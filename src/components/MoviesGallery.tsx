@@ -785,7 +785,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     gsap.killTweensOf(animStateRef.current);
     gsap.to(animStateRef.current, {
       progress: clamped,
-      duration: 0.65,
+      duration: 0.72,
       ease: 'power3.out',
       onUpdate: () => {
         const rounded = Math.round(animStateRef.current.progress);
@@ -1197,11 +1197,10 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
 
     // Precise Cursor-Aware Scrolling:
-    // When cursor is ON OR INSIDE the CD's circle -> scroll the CD carousel ONE BY ONE SMOOTHLY!
-    // When cursor is OUTSIDE the CD's circle -> allow the webpage to scroll down/up naturally without interception!
-    let lastWheelStepTime = 0;
+    // Strictly advances ONE disc per scroll gesture, absorbing high-force momentum or rapid trackpad flings.
+    let isWheelGestureLocked = false;
     let wheelDeltaAccumulator = 0;
-    let wheelResetTimer: any = null;
+    let wheelGestureTimer: any = null;
 
     const handleWheel = (e: WheelEvent) => {
       // If any modal, dialog, or overlay is open on the page, DO NOT INTERCEPT WHEEL!
@@ -1230,29 +1229,34 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       e.stopImmediatePropagation();
       resetIdle();
 
-      const now = performance.now();
-      const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      // Keep gesture timer alive while events are streaming in from this scroll gesture
+      clearTimeout(wheelGestureTimer);
+      wheelGestureTimer = setTimeout(() => {
+        isWheelGestureLocked = false;
+        wheelDeltaAccumulator = 0;
+      }, 250);
 
-      // Ignore zero or micro-twitches
+      // If this gesture has already advanced a disc, lock out all momentum / high-force events
+      if (isWheelGestureLocked) {
+        return;
+      }
+
+      // Wait if previous glide transition is actively playing
+      if (isAnimatingRef.current) {
+        return;
+      }
+
+      const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
       if (Math.abs(delta) < 1.5) return;
 
       wheelDeltaAccumulator += delta;
 
-      clearTimeout(wheelResetTimer);
-      wheelResetTimer = setTimeout(() => {
-        wheelDeltaAccumulator = 0;
-      }, 180);
-
-      // Calibrated cooldown to ensure each wheel roll advances strictly ONE disc smoothly at a time
-      if (now - lastWheelStepTime < 280) {
-        return;
-      }
-
-      const isDiscreteClick = Math.abs(delta) >= 40;
-      const threshold = isDiscreteClick ? 18 : 24;
+      const isDiscreteClick = Math.abs(delta) >= 30;
+      const threshold = isDiscreteClick ? 14 : 20;
 
       if (Math.abs(wheelDeltaAccumulator) >= threshold) {
-        lastWheelStepTime = now;
+        // Lock this gesture: no matter how much force is applied, advance strictly ONE disc
+        isWheelGestureLocked = true;
         if (wheelDeltaAccumulator > 0) {
           handleNextRef.current();
         } else {
@@ -1313,9 +1317,10 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       }
 
       if (pointerDirection === 'horizontal') {
-        // Horizontal CD carousel scrub clamped strictly to one-disc range (±1.15) for smooth 1-by-1 control
-        const rawScrub = -dx / (window.innerWidth * 0.45);
-        const clampedScrub = Math.max(-1.15, Math.min(1.15, rawScrub));
+        // Damped horizontal CD scrub locked strictly to one-disc range (±1.0) for calm 1-by-1 control
+        const screenFactor = Math.max(340, Math.min(window.innerWidth, 560));
+        const rawScrub = -dx / (screenFactor * 0.75);
+        const clampedScrub = Math.max(-1.0, Math.min(1.0, rawScrub));
         const total = filmsRef.current.length || 1;
         const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + clampedScrub));
         animStateRef.current.progress = nextP;
