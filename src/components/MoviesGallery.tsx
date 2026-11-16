@@ -716,7 +716,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
   }, [activeFilm?.id]);
 
   // Circle active or clicked disc 360 degrees
-  const triggerDiscSpin = useCallback((_film: A24Film, targetDisc?: THREE.Group, discIndex?: number) => {
+  const triggerDiscSpin = useCallback((_film: A24Film, targetDisc?: THREE.Group, discIndex?: number, onFinish?: () => void) => {
     if (isSpinningRef.current) return;
     const currentIdx = typeof discIndex === 'number' ? discIndex : activeIndexRef.current;
     const disc = targetDisc || discsRef.current[currentIdx];
@@ -741,6 +741,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         disc.position.z = origZ;
         spinningDiscIdxRef.current = null;
         isSpinningRef.current = false;
+        onFinish?.();
       }
     });
 
@@ -754,7 +755,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     });
   }, []);
 
-  const triggerSpinRef = useRef<(film: A24Film, disc?: THREE.Group, discIndex?: number) => void>(() => {});
+  const triggerSpinRef = useRef<(film: A24Film, disc?: THREE.Group, discIndex?: number, onFinish?: () => void) => void>(() => {});
   triggerSpinRef.current = triggerDiscSpin;
 
   // Glide to specific index smoothly & cleanly one-by-one with GSAP
@@ -1384,19 +1385,23 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       if (targetFilm) {
         const resolvedIdx = targetIndex !== null ? targetIndex : activeIndexRef.current;
         const discToSpin = targetDiscGroup || discsRef.current[resolvedIdx];
-
-        // 1. One full 360-degree rotation for every CD clicked
-        if (discToSpin) {
-          triggerSpinRef.current(targetFilm, discToSpin, resolvedIdx);
-        }
+        const filmToPlay = targetFilm;
 
         // If clicking a side CD, glide it to active center while it spins
         if (targetIndex !== null && targetIndex !== activeIndexRef.current) {
           glideToIndex(targetIndex);
         }
 
-        // Update selected film for trailer
-        setSelectedFilmForTrailer(targetFilm);
+        // 1. One full 360-degree rotation for every CD clicked, and AFTER rotation completes, play the trailer!
+        if (discToSpin) {
+          triggerSpinRef.current(targetFilm, discToSpin, resolvedIdx, () => {
+            setSelectedFilmForTrailer(filmToPlay);
+            setIsTrailerOpen(true);
+          });
+        } else {
+          setSelectedFilmForTrailer(filmToPlay);
+          setIsTrailerOpen(true);
+        }
       }
     };
 
