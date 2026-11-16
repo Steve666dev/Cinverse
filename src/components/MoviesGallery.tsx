@@ -785,8 +785,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     gsap.killTweensOf(animStateRef.current);
     gsap.to(animStateRef.current, {
       progress: clamped,
-      duration: 0.72,
-      ease: 'power3.out',
+      duration: 0.52,
+      ease: 'power2.out',
       onUpdate: () => {
         const rounded = Math.round(animStateRef.current.progress);
         if (rounded !== activeIndexRef.current) {
@@ -806,7 +806,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
   // Move exactly ONE disc forward smoothly
   const handleNext = useCallback(() => {
     const total = filmsRef.current.length || 1;
-    const current = activeIndexRef.current;
+    const current = Math.round(targetIndexRef.current);
     const target = Math.min(total - 1, current + 1);
     if (target !== current) {
       glideToIndex(target);
@@ -815,7 +815,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
   // Move exactly ONE disc backward smoothly
   const handlePrev = useCallback(() => {
-    const current = activeIndexRef.current;
+    const current = Math.round(targetIndexRef.current);
     const target = Math.max(0, current - 1);
     if (target !== current) {
       glideToIndex(target);
@@ -1139,29 +1139,14 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     const checkIsOverCdCircle = (clientX: number, clientY: number): boolean => {
       if (!domEl || !cameraRef.current) return false;
       const rect = domEl.getBoundingClientRect();
+      if (rect.bottom <= 50 || rect.top >= window.innerHeight - 50) return false;
+      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return false;
 
-      // If the hero section is scrolled offscreen, allow normal page scroll
-      if (rect.bottom <= 50 || rect.top >= window.innerHeight - 50) {
-        return false;
-      }
-
-      // If outside canvas bounds completely
-      if (
-        clientX < rect.left || clientX > rect.right ||
-        clientY < rect.top || clientY > rect.bottom
-      ) {
-        return false;
-      }
-
-      // Project the fixed focal center of the 3D CD stage (0, 0.28, 0)
-      // This ensures that as discs slide in/out during scrolling transitions,
-      // the CD circle interaction zone remains locked at the center and NEVER leaks into page scroll!
       tempVec3.set(0, 0.28, 0);
       tempVec3.project(cameraRef.current);
       const centerScreenX = rect.left + (tempVec3.x * 0.5 + 0.5) * rect.width;
       const centerScreenY = rect.top + (-tempVec3.y * 0.5 + 0.5) * rect.height;
 
-      // CD disc radius in screen pixels (1.18 unit radius projected from focal center, +4% comfort margin)
       tempEdge.set(1.22, 0.28, 0);
       tempEdge.project(cameraRef.current);
       const edgeScreenX = rect.left + (tempEdge.x * 0.5 + 0.5) * rect.width;
@@ -1169,10 +1154,36 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
       const dx = clientX - centerScreenX;
       const dy = clientY - centerScreenY;
-      const distFromCenter = Math.hypot(dx, dy);
+      return Math.hypot(dx, dy) <= cdRadiusPx;
+    };
 
-      // Returns true ONLY when cursor is inside the center CD circle!
-      return distFromCenter <= cdRadiusPx;
+    const checkIsOverCdCarousel = (clientX: number, clientY: number): boolean => {
+      if (!domEl || !cameraRef.current) return false;
+      const rect = domEl.getBoundingClientRect();
+      if (rect.bottom <= 50 || rect.top >= window.innerHeight - 50) return false;
+      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return false;
+
+      tempVec3.set(0, 0.28, 0);
+      tempVec3.project(cameraRef.current);
+      const centerScreenX = rect.left + (tempVec3.x * 0.5 + 0.5) * rect.width;
+      const centerScreenY = rect.top + (-tempVec3.y * 0.5 + 0.5) * rect.height;
+
+      tempEdge.set(1.22, 0.28, 0);
+      tempEdge.project(cameraRef.current);
+      const edgeScreenX = rect.left + (tempEdge.x * 0.5 + 0.5) * rect.width;
+      const cdRadiusPx = Math.abs(edgeScreenX - centerScreenX);
+
+      const dx = clientX - centerScreenX;
+      const dy = clientY - centerScreenY;
+
+      // Center CD circle check
+      if (Math.hypot(dx, dy) <= cdRadiusPx * 1.1) return true;
+
+      // Full horizontal carousel zone covering left and right visible discs
+      const isInDiscsBandY = Math.abs(dy) <= cdRadiusPx * 1.35;
+      const isInDiscsBandX = Math.abs(dx) <= cdRadiusPx * 3.2;
+
+      return isInDiscsBandY && isInDiscsBandX;
     };
 
     // Lightweight passive mouse movement parallax & dynamic CD hover cursor
@@ -1189,7 +1200,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       };
 
       if (!isDraggingRef.current && domEl) {
-        const isOver = checkIsOverCdCircle(e.clientX, e.clientY);
+        const isOver = checkIsOverCdCarousel(e.clientX, e.clientY);
         domEl.style.cursor = isOver ? 'grab' : 'default';
       }
     };
@@ -1198,9 +1209,10 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
     // Precise Cursor-Aware Scrolling:
     // Strictly advances ONE disc per scroll gesture, absorbing high-force momentum or rapid trackpad flings.
-    let isWheelGestureLocked = false;
+    let lastWheelStepTime = 0;
     let wheelDeltaAccumulator = 0;
     let wheelGestureTimer: any = null;
+    let isGestureLocked = false;
 
     const handleWheel = (e: WheelEvent) => {
       // If any modal, dialog, or overlay is open on the page, DO NOT INTERCEPT WHEEL!
@@ -1216,47 +1228,52 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         return;
       }
 
-      const isOverCd = checkIsOverCdCircle(e.clientX, e.clientY);
+      const isOverCd = checkIsOverCdCarousel(e.clientX, e.clientY);
 
-      // If cursor is outside the CD's circle, do NOT intercept -> natural page scroll!
+      // If cursor is outside the CD carousel zone, do NOT intercept -> natural page scroll!
       if (!isOverCd) {
         return;
       }
 
-      // Cursor is ON or INSIDE the CD's circle -> prevent page scroll and cycle the CDs one by one
+      // Cursor is ON or INSIDE the CD carousel -> prevent page scroll and step the CDs one by one
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
       resetIdle();
 
-      // Keep gesture timer alive while events are streaming in from this scroll gesture
+      const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      if (Math.abs(delta) < 1.0) return;
+
+      const now = performance.now();
+      const isDiscreteClick = Math.abs(delta) >= 30;
+
+      // Quickly reset gesture lock after user stops scrolling (120ms of silence)
       clearTimeout(wheelGestureTimer);
       wheelGestureTimer = setTimeout(() => {
-        isWheelGestureLocked = false;
+        isGestureLocked = false;
         wheelDeltaAccumulator = 0;
-      }, 250);
+      }, 120);
 
-      // If this gesture has already advanced a disc, lock out all momentum / high-force events
-      if (isWheelGestureLocked) {
-        return;
+      // If gesture is locked from high-force fling, release if cooldown expired or user reversed direction
+      if (isGestureLocked) {
+        const cooldown = isDiscreteClick ? 150 : 240;
+        const hasReversed = (wheelDeltaAccumulator > 0 && delta < -8) || (wheelDeltaAccumulator < 0 && delta > 8);
+        if (now - lastWheelStepTime > cooldown || hasReversed) {
+          isGestureLocked = false;
+          wheelDeltaAccumulator = 0;
+        } else {
+          return;
+        }
       }
-
-      // Wait if previous glide transition is actively playing
-      if (isAnimatingRef.current) {
-        return;
-      }
-
-      const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
-      if (Math.abs(delta) < 1.5) return;
 
       wheelDeltaAccumulator += delta;
 
-      const isDiscreteClick = Math.abs(delta) >= 30;
-      const threshold = isDiscreteClick ? 14 : 20;
+      const threshold = isDiscreteClick ? 12 : 18;
+      const minStepInterval = isDiscreteClick ? 130 : 200;
 
-      if (Math.abs(wheelDeltaAccumulator) >= threshold) {
-        // Lock this gesture: no matter how much force is applied, advance strictly ONE disc
-        isWheelGestureLocked = true;
+      if (Math.abs(wheelDeltaAccumulator) >= threshold && (now - lastWheelStepTime >= minStepInterval)) {
+        lastWheelStepTime = now;
+        isGestureLocked = true;
         if (wheelDeltaAccumulator > 0) {
           handleNextRef.current();
         } else {
@@ -1340,7 +1357,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
         // Strictly advance ONE disc at a time (forward or backward) smoothly
         let targetIndex = activeIndexRef.current;
-        if (Math.abs(vx) > 0.20 || Math.abs(dx) > 30) {
+        if (Math.abs(vx) > 0.16 || Math.abs(dx) > 24) {
           const step = dx < 0 ? 1 : -1;
           targetIndex = activeIndexRef.current + step;
         }
@@ -1368,7 +1385,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       pointerDirection = 'none';
     };
 
-    domEl.addEventListener('pointerdown', handlePointerDown);
+    const heroContainer = (containerRef.current || domEl) as HTMLElement;
+    heroContainer.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
     window.addEventListener('pointercancel', handlePointerCancel);
@@ -1459,7 +1477,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
-      domEl.removeEventListener('pointerdown', handlePointerDown);
+      const heroContainer = (containerRef.current || domEl) as HTMLElement;
+      heroContainer.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerCancel);
