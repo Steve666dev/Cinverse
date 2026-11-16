@@ -10,7 +10,8 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { id, ids } = req.query || {};
+  const { id, ids, title, year } = req.query || {};
+  const OMDB_KEY = process.env.OMDB_API_KEY || process.env.VITE_OMDB_API_KEY || 'a7d0a9ca';
 
   const possiblePaths = [
     new URL('../data/cache/imdb_ratings_live.json', import.meta.url),
@@ -44,8 +45,46 @@ export default async function handler(req, res) {
     if (ratingsMap[cleanId]) {
       return res.status(200).json({ ok: true, ...ratingsMap[cleanId] });
     }
+    // Dynamic live lookup via OMDb
+    try {
+      const oRes = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&i=${encodeURIComponent(cleanId)}`);
+      if (oRes.ok) {
+        const oData = await oRes.json();
+        if (oData && oData.Response !== 'False' && oData.imdbRating && oData.imdbRating !== 'N/A') {
+          const numRating = parseFloat(oData.imdbRating) || 0;
+          return res.status(200).json({
+            ok: true,
+            rating: oData.imdbRating,
+            votes: oData.imdbVotes && oData.imdbVotes !== 'N/A' ? `${oData.imdbVotes} votes` : undefined,
+            numericRating: numRating,
+            imdbId: cleanId
+          });
+        }
+      }
+    } catch {}
     return res.status(404).json({ ok: false, error: 'IMDb rating not in cache' });
   }
 
-  return res.status(400).json({ ok: false, error: 'Missing id or ids parameter' });
+  if (title && typeof title === 'string') {
+    const cleanTitle = title.trim();
+    try {
+      const oRes = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&t=${encodeURIComponent(cleanTitle)}&y=${year || ''}`);
+      if (oRes.ok) {
+        const oData = await oRes.json();
+        if (oData && oData.Response !== 'False' && oData.imdbRating && oData.imdbRating !== 'N/A') {
+          const numRating = parseFloat(oData.imdbRating) || 0;
+          return res.status(200).json({
+            ok: true,
+            rating: oData.imdbRating,
+            votes: oData.imdbVotes && oData.imdbVotes !== 'N/A' ? `${oData.imdbVotes} votes` : undefined,
+            numericRating: numRating,
+            imdbId: oData.imdbID
+          });
+        }
+      }
+    } catch {}
+    return res.status(404).json({ ok: false, error: 'Movie not found on IMDb/OMDb' });
+  }
+
+  return res.status(400).json({ ok: false, error: 'Missing id, ids, or title parameter' });
 }

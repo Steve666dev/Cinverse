@@ -187,14 +187,19 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
       ctx.clearRect(0, 0, cw, ch);
       ctx.imageSmoothingEnabled = true;
 
+      // Base poster dimensions for uniform, elegant cinematic swirl (eliminates oversized/huge posters)
+      const baseWidth = Math.max(65, Math.min(95, Math.min(cw, ch) * 0.085));
+
       particles.forEach((p) => {
         ctx.translate(cw / 2, ch / 2);
         ctx.rotate(p.rotate);
 
-        const w = p.img?.width ? p.img.width * p.scale : 0;
-        const h = p.img?.height ? p.img.height * p.scale : 0;
+        if (p.img && p.img.complete && p.img.naturalWidth > 0 && p.scale > 0.01) {
+          const aspect = (p.img.naturalHeight / p.img.naturalWidth) || 1.5;
+          const cleanAspect = Math.max(1.3, Math.min(1.65, aspect));
+          const w = baseWidth * p.scale;
+          const h = w * cleanAspect;
 
-        if (w && h) {
           ctx.drawImage(
             p.img,
             Math.round(p.x - w / 2),

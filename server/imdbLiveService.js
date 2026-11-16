@@ -73,13 +73,13 @@ async function getBrowserContext() {
   return browserContext;
 }
 
-export async function fetchLiveImdbRating(imdbId) {
+export async function fetchLiveImdbRating(imdbId, { forceLive = false } = {}) {
   if (!imdbId || !/^tt\d{7,10}$/.test(imdbId)) return null;
 
-  // Check cache (TTL 6 hours)
+  // Check cache (TTL 6 hours) unless forceLive is explicitly requested
   const cached = ratingsCache.get(imdbId);
   const now = Date.now();
-  if (cached) {
+  if (!forceLive && cached) {
     const ttl = 6 * 60 * 60 * 1000; // 6 hours
     if ((now - (cached.updatedAt || 0)) < ttl) {
       return cached;
@@ -242,4 +242,16 @@ export async function enrichMoviesWithLiveImdb(movies, { allowBackground = true 
 
   return movies;
 }
+
+export async function closeBrowser() {
+  if (browserContext) {
+    await browserContext.close().catch(() => {});
+    browserContext = null;
+  }
+  if (browserInstance) {
+    await browserInstance.close().catch(() => {});
+    browserInstance = null;
+  }
+}
+
 
