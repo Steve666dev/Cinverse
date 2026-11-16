@@ -61,6 +61,14 @@ const generalLimiter = createRateLimiter({
 });
 app.use('/api/', generalLimiter);
 
+// Dedicated Rate Limiter for compute-heavy /api/movies endpoint (60 req/min)
+const moviesLimiter = createRateLimiter({
+  name: 'api-movies',
+  max: 60,
+  windowMs: 60 * 1000,
+  message: 'Movies catalog rate limit exceeded. Protected by Cloudflare Safeguard.'
+});
+
 // 4. Stricter Rate Limiter for heavy trailer resolving (30 req/min)
 const trailerLimiter = createRateLimiter({
   name: 'api-trailer',
@@ -507,7 +515,7 @@ export async function runMoviePipeline(todayStr, region = 'IN') {
 /**
  * GET /api/movies?today=YYYY-MM-DD&tz=<IANA>&debug=1
  */
-app.get('/api/movies', async (req, res) => {
+app.get('/api/movies', moviesLimiter, async (req, res) => {
   const isDebug = req.query.debug === '1';
   const rawRegion = req.query.region || 'IN';
   const region = sanitizeInput(rawRegion, 2).toUpperCase();
@@ -595,18 +603,28 @@ app.get('/api/movies', async (req, res) => {
 
       // Google Cloud Question 10: Graceful Fallback Strategy during Provider Outages
       try {
-        const cacheFiles = fs.readdirSync(CACHE_DIR).filter(f => f.endsWith(`_${region}_TMDB.json`)).sort().reverse();
-        if (cacheFiles.length > 0) {
-          const fallbackPath = path.join(CACHE_DIR, cacheFiles[0]);
+        const cacheFiles = fs.readdirSync(CACHE_DIR)
+          .filter(f => f.endsWith(`_${region}_TMDB.json`))
+          .map(file => {
+            const m = file.match(/^(\d{4}-\d{2}-\d{2})_/);
+            const ymd = m ? parseYMD(m[1]) : null;
+            const dayNum = ymd ? toDayNumber(ymd.y, ymd.m, ymd.d) : -Infinity;
+            return { file, dayNum };
+          })
+          .sort((a, b) => b.dayNum - a.dayNum);
+
+        if (cacheFiles.length > 0 && cacheFiles[0].dayNum !== -Infinity) {
+          const latestFile = cacheFiles[0].file;
+          const fallbackPath = path.join(CACHE_DIR, latestFile);
           const fallbackData = JSON.parse(fs.readFileSync(fallbackPath, 'utf8'));
           if (fallbackData && Array.isArray(fallbackData.movies)) {
             fallbackData.meta = fallbackData.meta || {};
             fallbackData.meta.degraded = true;
             fallbackData.meta.circuitBreakerTripped = tmdbCircuitBreaker.isOpen();
-            fallbackData.meta.fallbackSource = cacheFiles[0];
+            fallbackData.meta.fallbackSource = latestFile;
             fallbackData.meta.clockSkewDays = clockSkewDays;
             fallbackData.meta.warning = `Upstream pipeline degraded (${err.message}). Serving resilient fallback snapshot.`;
-            console.warn(`[Graceful Fallback] Serving latest verified cache snapshot (${cacheFiles[0]}) due to error: ${err.message}`);
+            console.warn(`[Graceful Fallback] Serving latest verified cache snapshot (${latestFile}) due to error: ${err.message}`);
             return res.json(fallbackData);
           }
         }
@@ -649,7 +667,7 @@ app.get('/api/movies', async (req, res) => {
         }
         if (changed) {
           try {
-            fs.writeFileSync(cacheFilePath, JSON.stringify(cachedPayload, null, 2), 'utf8');
+            await fs.promises.writeFile(cacheFilePath, JSON.stringify(cachedPayload, null, 2), 'utf8');
           } catch (e) {}
         }
       })().catch(err => console.warn('[Background Trailer Enrichment Error]', err.message));
@@ -660,9 +678,7 @@ app.get('/api/movies', async (req, res) => {
   if (cachedPayload && Array.isArray(cachedPayload.movies)) {
     try {
       await enrichMoviesWithLiveImdb(cachedPayload.movies);
-      try {
-        fs.writeFileSync(cacheFilePath, JSON.stringify(cachedPayload, null, 2), 'utf8');
-      } catch (e) {}
+      fs.promises.writeFile(cacheFilePath, JSON.stringify(cachedPayload, null, 2), 'utf8').catch(() => {});
     } catch (err) {
       console.warn('[IMDb Live Service] Cached payload enrichment error:', err.message);
     }
@@ -694,9 +710,13 @@ app.get('/api/poster-proxy', async (req, res) => {
     return res.status(400).send('Invalid URL');
   }
 
-  // Check in-memory cache
+  // Check in-memory cache with LRU access refresh
   if (posterMemoryCache.has(targetUrl)) {
     const cached = posterMemoryCache.get(targetUrl);
+    // Move accessed item to tail of Map (most recently used)
+    posterMemoryCache.delete(targetUrl);
+    posterMemoryCache.set(targetUrl, cached);
+
     res.setHeader('Content-Type', cached.contentType);
     res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
     res.setHeader('X-Proxy-Cache', 'HIT');
@@ -704,8 +724,10 @@ app.get('/api/poster-proxy', async (req, res) => {
   }
 
   try {
-    const upstreamRes = await fetchWithRetry(targetUrl, {}, 2, 300);
+    // Fetch upstream with exponential backoff & Full Jitter (retries: 3, base: 400ms)
+    const upstreamRes = await fetchWithRetry(targetUrl, {}, 3, 400);
     if (!upstreamRes.ok) {
+      console.warn(`[Poster Proxy] Upstream returned HTTP ${upstreamRes.status} for ${targetUrl}`);
       return res.status(upstreamRes.status).send('Upstream image error');
     }
 
@@ -713,10 +735,10 @@ app.get('/api/poster-proxy', async (req, res) => {
     const arrayBuffer = await upstreamRes.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Limit cache to 150 items
-    if (posterMemoryCache.size > 150) {
-      const firstKey = posterMemoryCache.keys().next().value;
-      if (firstKey) posterMemoryCache.delete(firstKey);
+    // LRU eviction: maintain maximum 150 items
+    if (posterMemoryCache.size >= 150) {
+      const oldestKey = posterMemoryCache.keys().next().value;
+      if (oldestKey) posterMemoryCache.delete(oldestKey);
     }
     posterMemoryCache.set(targetUrl, { contentType, buffer });
 
@@ -857,8 +879,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Automatic cron refresh every 6 hours: at minute 0 past every 6th hour
+// Automatic cron refresh every 6 hours: at minute 0 past every 6th hour (with concurrency lock to avoid overlap)
+let isCronRunning = false;
 cron.schedule('0 */6 * * *', async () => {
+  if (isCronRunning) {
+    console.warn('[Cron] Previous scheduled refresh is still executing. Skipping overlapping run.');
+    return;
+  }
+  isCronRunning = true;
   console.log('[Cron] Running 6-hour automatic refresh for today...');
   const now = new Date();
   const todayStr = formatYMD({
@@ -871,6 +899,8 @@ cron.schedule('0 */6 * * *', async () => {
     console.log('[Cron] Automatic refresh completed successfully.');
   } catch (err) {
     console.error('[Cron] Automatic refresh failed:', err.message);
+  } finally {
+    isCronRunning = false;
   }
 });
 
