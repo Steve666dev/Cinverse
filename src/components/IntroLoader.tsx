@@ -193,43 +193,19 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
       if (!ctx) return;
       ctx.clearRect(0, 0, cw, ch);
       ctx.imageSmoothingEnabled = true;
-      // Responsive automatic poster sizing across all devices, screens, platforms & OS:
-      // Mobile (<600px): ~165-210px
-      // Tablet (600-1024px): ~230-295px
-      // Desktop / Laptop (1024-1920px): ~285-360px
-      // 4K / Ultrawide (>1920px): ~370-440px
-      const minDim = Math.min(cw, ch);
-      const isMobile = minDim < 600;
-      const isTablet = minDim >= 600 && minDim < 1024;
 
-      let baseWidth: number;
-      if (isMobile) {
-        baseWidth = Math.max(165, Math.min(215, minDim * 0.44));
-      } else if (isTablet) {
-        baseWidth = Math.max(230, Math.min(295, minDim * 0.33));
-      } else {
-        baseWidth = Math.max(285, Math.min(420, minDim * 0.28));
-      }
+      // Base poster dimensions for uniform, elegant cinematic swirl (consistently sized & clearly visible)
+      const baseWidth = Math.max(165, Math.min(235, Math.min(cw, ch) * 0.20));
 
       particles.forEach((p) => {
         ctx.translate(cw / 2, ch / 2);
         ctx.rotate(p.rotate);
 
-        if (p.img && p.img.complete && p.img.naturalWidth > 0 && p.scale > 0.02) {
+        if (p.img && p.img.complete && p.img.naturalWidth > 0 && p.scale > 0.01) {
           const aspect = (p.img.naturalHeight / p.img.naturalWidth) || 1.5;
           const cleanAspect = Math.max(1.3, Math.min(1.65, aspect));
-
-          // Boosted minimum visibility curve so mid-layer posters stay clear & prominent
-          const effectiveScale = Math.max(0.36, p.scale);
-          const w = baseWidth * effectiveScale;
+          const w = baseWidth * p.scale;
           const h = w * cleanAspect;
-
-          // Gracefully fade posters as they approach the center title
-          if (p.scale < 0.22) {
-            ctx.globalAlpha = Math.max(0, p.scale / 0.22);
-          } else {
-            ctx.globalAlpha = 1.0;
-          }
 
           ctx.drawImage(
             p.img,
@@ -238,7 +214,6 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
             Math.round(w),
             Math.round(h)
           );
-          ctx.globalAlpha = 1.0;
         }
         ctx.resetTransform();
       });

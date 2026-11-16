@@ -785,8 +785,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     gsap.killTweensOf(animStateRef.current);
     gsap.to(animStateRef.current, {
       progress: clamped,
-      duration: 0.56,
-      ease: 'power3.out',
+      duration: 0.48,
+      ease: 'sine.out',
       onUpdate: () => {
         const rounded = Math.round(animStateRef.current.progress);
         if (rounded !== activeIndexRef.current) {
@@ -1209,10 +1209,11 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
     // Precise Cursor-Aware Scrolling:
     // Strictly advances ONE disc per scroll gesture, absorbing high-force momentum or rapid trackpad flings.
-    let hasSteppedInGesture = false;
+    let isGestureLocked = false;
     let wheelDeltaAccumulator = 0;
-    let gestureEndTimer: any = null;
-    let lastDirection = 0;
+    let gestureLockTimer: any = null;
+    let gestureIdleTimer: any = null;
+    let lastScrollDirection = 0;
 
     const handleWheel = (e: WheelEvent) => {
       // If any modal, dialog, or overlay is open on the page, DO NOT INTERCEPT WHEEL!
@@ -1252,23 +1253,21 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       const direction = delta > 0 ? 1 : -1;
 
       // If user reversed scroll direction, reset step lock immediately to allow instant direction change
-      if (hasSteppedInGesture && direction !== lastDirection && Math.abs(delta) > 8) {
-        hasSteppedInGesture = false;
+      if (isGestureLocked && direction !== lastScrollDirection && Math.abs(delta) > 6) {
+        clearTimeout(gestureLockTimer);
+        isGestureLocked = false;
         wheelDeltaAccumulator = 0;
       }
 
-      // 180ms of silence indicates the current scroll gesture (or trackpad flick) has ended
-      clearTimeout(gestureEndTimer);
-      gestureEndTimer = setTimeout(() => {
-        hasSteppedInGesture = false;
-        wheelDeltaAccumulator = 0;
-      }, 180);
-
-      // CRITICAL: If this gesture has already advanced a disc, lock out all momentum / high-force events
-      // Ensures that ANY applied force (fast flick, free-spin wheel) advances strictly ONE disc, NEVER "all at once"
-      if (hasSteppedInGesture) {
+      // If locked from advancing a disc, drop trailing momentum events WITHOUT pushing back the unlock timer!
+      if (isGestureLocked) {
         return;
       }
+
+      clearTimeout(gestureIdleTimer);
+      gestureIdleTimer = setTimeout(() => {
+        wheelDeltaAccumulator = 0;
+      }, 100);
 
       wheelDeltaAccumulator += delta;
 
@@ -1276,8 +1275,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       const threshold = isDiscreteClick ? 12 : 20;
 
       if (Math.abs(wheelDeltaAccumulator) >= threshold) {
-        hasSteppedInGesture = true;
-        lastDirection = direction;
+        isGestureLocked = true;
+        lastScrollDirection = direction;
         wheelDeltaAccumulator = 0;
 
         if (direction > 0) {
@@ -1285,6 +1284,13 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         } else {
           handlePrevRef.current();
         }
+
+        // Fixed cooldown: unlocks in 220ms (140ms for discrete clicks), never trapped by momentum
+        clearTimeout(gestureLockTimer);
+        gestureLockTimer = setTimeout(() => {
+          isGestureLocked = false;
+          wheelDeltaAccumulator = 0;
+        }, isDiscreteClick ? 140 : 220);
       }
     };
 
