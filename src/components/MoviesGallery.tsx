@@ -785,8 +785,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     gsap.killTweensOf(animStateRef.current);
     gsap.to(animStateRef.current, {
       progress: clamped,
-      duration: 0.50,
-      ease: 'power2.out',
+      duration: 0.65,
+      ease: 'power3.out',
       onUpdate: () => {
         const rounded = Math.round(animStateRef.current.progress);
         if (rounded !== activeIndexRef.current) {
@@ -798,9 +798,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         activeIndexRef.current = clamped;
         targetIndexRef.current = clamped;
         setActiveIndex(clamped);
-        setTimeout(() => {
-          isAnimatingRef.current = false;
-        }, 50);
+        isAnimatingRef.current = false;
       }
     });
   }, []);
@@ -1179,7 +1177,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     // Precise Cursor-Aware Scrolling:
     // When cursor is ON OR INSIDE the CD's circle -> scroll the CD carousel ONE BY ONE SMOOTHLY!
     // When cursor is OUTSIDE the CD's circle -> allow the webpage to scroll down/up naturally without interception!
-    let lastWheelTime = 0;
+    let lastWheelStepTime = 0;
     let wheelDeltaAccumulator = 0;
     let wheelResetTimer: any = null;
 
@@ -1215,26 +1213,23 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       // Ignore zero or micro-twitches
       if (Math.abs(delta) < 1.5) return;
 
-      // If already gliding to the next/prev disc, absorb trailing wheel events from this gesture
-      if (isAnimatingRef.current) {
-        lastWheelTime = now;
-        return;
-      }
-
       wheelDeltaAccumulator += delta;
 
       clearTimeout(wheelResetTimer);
       wheelResetTimer = setTimeout(() => {
         wheelDeltaAccumulator = 0;
-      }, 160);
+      }, 180);
 
-      // Calibrated threshold & cooldown to ensure each wheel roll moves strictly ONE disc at a time smoothly
-      const isDiscreteClick = Math.abs(delta) >= 45;
-      const threshold = isDiscreteClick ? 25 : 22;
-      const cooldown = isDiscreteClick ? 280 : 320;
+      // Calibrated cooldown to ensure each wheel roll advances strictly ONE disc smoothly at a time
+      if (now - lastWheelStepTime < 280) {
+        return;
+      }
 
-      if (Math.abs(wheelDeltaAccumulator) >= threshold && now - lastWheelTime > cooldown) {
-        lastWheelTime = now;
+      const isDiscreteClick = Math.abs(delta) >= 40;
+      const threshold = isDiscreteClick ? 18 : 24;
+
+      if (Math.abs(wheelDeltaAccumulator) >= threshold) {
+        lastWheelStepTime = now;
         if (wheelDeltaAccumulator > 0) {
           handleNextRef.current();
         } else {
@@ -1293,10 +1288,11 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       }
 
       if (pointerDirection === 'horizontal') {
-        // Horizontal CD carousel scrub without triggering React re-renders mid-drag
-        const scrub = -dx / (window.innerWidth * 0.42);
+        // Horizontal CD carousel scrub clamped strictly to one-disc range (±1.15) for smooth 1-by-1 control
+        const rawScrub = -dx / (window.innerWidth * 0.45);
+        const clampedScrub = Math.max(-1.15, Math.min(1.15, rawScrub));
         const total = filmsRef.current.length || 1;
-        const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + scrub));
+        const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + clampedScrub));
         animStateRef.current.progress = nextP;
       }
     };
@@ -1311,12 +1307,11 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         const dx = e.clientX - pointerStartX;
         const vx = dx / elapsed;
 
-        let targetIndex = Math.round(animStateRef.current.progress);
-        if (Math.abs(vx) > 0.25 || Math.abs(dx) > 35) {
-          targetIndex = dx < 0 ? Math.ceil(startProgressRef.current) : Math.floor(startProgressRef.current);
-          if (targetIndex === activeIndexRef.current) {
-            targetIndex = dx < 0 ? activeIndexRef.current + 1 : activeIndexRef.current - 1;
-          }
+        // Strictly advance ONE disc at a time (forward or backward) smoothly
+        let targetIndex = activeIndexRef.current;
+        if (Math.abs(vx) > 0.20 || Math.abs(dx) > 30) {
+          const step = dx < 0 ? 1 : -1;
+          targetIndex = activeIndexRef.current + step;
         }
 
         const total = filmsRef.current.length || 1;
