@@ -1734,7 +1734,11 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
                     {film.releaseDate}
                   </span>
                 )}
-                ★ {film.imdbRating || (film.rating ? String(film.rating) : 'N/A')}
+                {film.imdbRating && film.imdbRating !== 'N/A' ? (
+                  <span>★ {film.imdbRating}</span>
+                ) : (
+                  <span style={{ color: '#888', fontWeight: 500 }}>Unrated</span>
+                )}
               </span>
             </button>
           ))}

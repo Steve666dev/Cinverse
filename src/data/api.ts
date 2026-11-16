@@ -194,11 +194,28 @@ export const fetchLiveImdbRatingForMovie = async (
   imdbId: string
 ): Promise<{ rating?: string; votes?: string; numericRating?: number } | null> => {
   if (!imdbId || !/^tt\d{7,10}$/.test(imdbId)) return null;
+
+  // 1. Check local static cache first (instant 0ms response)
   try {
-    const res = await fetch(`/api/imdb-rating?id=${encodeURIComponent(imdbId)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.ok) {
+    const cacheRes = await fetch('/data/cache/imdb_ratings_live.json').catch(() => null);
+    if (cacheRes && cacheRes.ok) {
+      const map = await cacheRes.json().catch(() => null);
+      if (map && map[imdbId] && map[imdbId].rating) {
+        return {
+          rating: map[imdbId].rating,
+          votes: map[imdbId].votes,
+          numericRating: map[imdbId].numericRating
+        };
+      }
+    }
+  } catch {}
+
+  // 2. Check serverless /api/imdb-rating endpoint
+  try {
+    const res = await fetch(`/api/imdb-rating?id=${encodeURIComponent(imdbId)}`).catch(() => null);
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data && data.ok && data.rating) {
         return {
           rating: data.rating,
           votes: data.votes,
@@ -207,6 +224,24 @@ export const fetchLiveImdbRatingForMovie = async (
       }
     }
   } catch {}
+
+  // 3. Fallback to direct verified OMDb query if key available
+  if (OMDB_KEY) {
+    try {
+      const oRes = await fetch(`${OMDB_URL}?apikey=${OMDB_KEY}&i=${imdbId}`).catch(() => null);
+      if (oRes && oRes.ok) {
+        const oData = await oRes.json().catch(() => null);
+        if (oData && oData.Response !== 'False' && oData.imdbRating && oData.imdbRating !== 'N/A') {
+          return {
+            rating: oData.imdbRating,
+            votes: oData.imdbVotes && oData.imdbVotes !== 'N/A' ? formatImdbVoteCount(oData.imdbVotes) : undefined,
+            numericRating: parseFloat(oData.imdbRating)
+          };
+        }
+      }
+    } catch {}
+  }
+
   return null;
 };
 
@@ -217,7 +252,7 @@ const parseOMDb = (data: any, index: number): Movie | null => {
   const id = rawId ? parseInt(rawId) || (Date.now() + index) : Date.now() + index;
   const genre = data.Genre || 'Drama';
   const hasValidImdb = data.imdbRating && data.imdbRating !== 'N/A';
-  const rating = hasValidImdb ? parseFloat(data.imdbRating) : 7.0;
+  const rating = hasValidImdb ? parseFloat(data.imdbRating) : 0;
   const imdbRating = hasValidImdb ? String(data.imdbRating) : undefined;
   const imdbVotes = data.imdbVotes && data.imdbVotes !== 'N/A' ? formatImdbVoteCount(data.imdbVotes) : undefined;
   const poster = upgradePosterUrl(data.Poster);
@@ -269,7 +304,7 @@ const parseTMDb = (data: any, index: number): Movie | null => {
     ? formatPosterUrl(data.poster_path, 'w500')
     : (data.backdrop_path ? formatPosterUrl(data.backdrop_path, 'w500') : undefined);
   const year   = data.release_date ? parseInt(data.release_date.split('-')[0]) : 0;
-  const rating = data.vote_average ? parseFloat(data.vote_average.toFixed(1)) : 7.0;
+  const rating = data.vote_average ? parseFloat(data.vote_average.toFixed(1)) : 0;
   const director = data.credits?.crew?.find((c: any) => c.job === 'Director')?.name || 'Unknown';
   const castMembers: CastMember[] = data.credits?.cast?.slice(0, 12).map((c: any) => ({
     id: c.id,

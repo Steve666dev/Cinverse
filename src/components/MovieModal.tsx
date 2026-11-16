@@ -5,7 +5,7 @@ import { useWatchlist } from '../context/WatchlistContext';
 import { ScrollProgress } from '@/components/core/scroll-progress';
 import { GlowEffect } from '@/components/core/glow-effect';
 import { TextShimmerWave } from '@/components/core/text-shimmer-wave';
-import { fetchTMDBMovieById } from '../data/api';
+import { fetchTMDBMovieById, fetchLiveImdbRatingForMovie } from '../data/api';
 import { gsap } from 'gsap';
 import { Flip } from 'gsap/Flip';
 import './MovieModal.css';
@@ -88,45 +88,55 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
         });
     }
 
-    // 2. Dynamic IMDb rating & authentic vote count live resolution
-    const imdbId = (movie as any).imdbId || (String(movie.id).startsWith('tt') ? String(movie.id) : null);
-    if (imdbId && !movie.imdbRating) {
-      fetch(`/api/imdb-rating?id=${encodeURIComponent(imdbId)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.ok && data.rating) {
-            (movie as any).imdbRating = data.rating;
-            (movie as any).imdbVotes = data.votes || (movie as any).imdbVotes;
-            if (data.numericRating) movie.r = data.numericRating;
-            setEnrichTick(v => v + 1);
-          }
-        })
-        .catch(() => {});
-    }
-
-    // 3. Ultra-fast metadata enrichment (cast, director, providers, runtime, reviews, trailer)
-    if (!movie.castMembers?.length || !movie.watchProviders?.length || !movie.runtime || !movie.reviews?.length) {
-      fetchTMDBMovieById(movie.id, 0).then((full) => {
-        if (full) {
-          if (full.castMembers?.length) movie.castMembers = full.castMembers;
-          if (full.watchProviders?.length) movie.watchProviders = full.watchProviders;
-          if (full.runtime) movie.runtime = full.runtime;
-          if (full.dir && full.dir !== 'Unknown') movie.dir = full.dir;
-          if (full.trailerUrl) {
-            movie.trailerUrl = full.trailerUrl;
-            const fullTid = getYouTubeVideoId(full);
-            if (fullTid) {
-              setDynamicTrailerId((prev) => prev || fullTid);
-              setIsResolvingTrailer(false);
-            }
-          }
-          if (full.tagline && full.tagline !== movie.tagline) movie.tagline = full.tagline;
-          if (full.blurb && full.blurb.length > (movie.blurb?.length || 0)) movie.blurb = full.blurb;
-          if (full.reviews?.length) movie.reviews = full.reviews;
-          setEnrichTick((v) => v + 1);
+    // 2. Dynamic authentic IMDb rating resolution
+    const resolveImdbRating = (targetImdbId: string) => {
+      fetchLiveImdbRatingForMovie(targetImdbId).then((live: any) => {
+        if (live && live.rating) {
+          movie.imdbId = targetImdbId;
+          movie.imdbRating = live.rating;
+          if (live.votes) movie.imdbVotes = live.votes;
+          if (live.numericRating) movie.r = live.numericRating;
+          setEnrichTick(v => v + 1);
         }
       }).catch(() => {});
+    };
+
+    const initialImdbId = movie.imdbId || (String(movie.id).startsWith('tt') ? String(movie.id) : null);
+    if (initialImdbId) {
+      resolveImdbRating(initialImdbId);
     }
+
+    // 3. Ultra-fast metadata enrichment (cast, director, providers, runtime, reviews, trailer, external_ids)
+    fetchTMDBMovieById(movie.id, 0).then((full) => {
+      if (full) {
+        if (full.castMembers?.length) movie.castMembers = full.castMembers;
+        if (full.watchProviders?.length) movie.watchProviders = full.watchProviders;
+        if (full.runtime) movie.runtime = full.runtime;
+        if (full.dir && full.dir !== 'Unknown') movie.dir = full.dir;
+        if (full.imdbId) {
+          movie.imdbId = full.imdbId;
+          if (full.imdbRating) {
+            movie.imdbRating = full.imdbRating;
+            movie.imdbVotes = full.imdbVotes;
+            if (full.r) movie.r = full.r;
+          } else {
+            resolveImdbRating(full.imdbId);
+          }
+        }
+        if (full.trailerUrl) {
+          movie.trailerUrl = full.trailerUrl;
+          const fullTid = getYouTubeVideoId(full);
+          if (fullTid) {
+            setDynamicTrailerId((prev) => prev || fullTid);
+            setIsResolvingTrailer(false);
+          }
+        }
+        if (full.tagline && full.tagline !== movie.tagline) movie.tagline = full.tagline;
+        if (full.blurb && full.blurb.length > (movie.blurb?.length || 0)) movie.blurb = full.blurb;
+        if (full.reviews?.length) movie.reviews = full.reviews;
+        setEnrichTick((v) => v + 1);
+      }
+    }).catch(() => {});
   }, [movie?.id]);
   
   const handleOpenTrailer = (e?: React.MouseEvent | React.KeyboardEvent) => {
@@ -349,13 +359,20 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose, onSelectActor }
                     {movie.dir && movie.dir !== 'Unknown' && movie.dir !== 'Director' && (
                       <span className="meta-dir">Dir. {movie.dir}</span>
                     )}
-                    {((movie.imdbRating && movie.imdbRating !== 'N/A') || (typeof movie.r === 'number' && movie.r > 0)) && (
+                    {movie.imdbRating && movie.imdbRating !== 'N/A' ? (
                       <span className="meta-rating" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                         <span style={{ background: '#f5c518', color: '#000000', fontSize: '0.65rem', fontWeight: 900, padding: '1px 5px', borderRadius: '3px', letterSpacing: '0.04em', lineHeight: 1.2 }}>IMDb</span>
-                        ★ {movie.imdbRating || (typeof movie.r === 'number' ? movie.r.toFixed(1) : '')}
+                        ★ {movie.imdbRating}/10
                         {movie.imdbVotes && <span style={{ color: '#888', fontSize: '0.75rem' }}>({movie.imdbVotes})</span>}
                       </span>
-                    )}
+                    ) : (typeof movie.r === 'number' && movie.r > 0 ? (
+                      <span className="meta-rating" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{ background: 'rgba(255, 255, 255, 0.1)', color: '#e2e8f0', fontSize: '0.65rem', fontWeight: 700, padding: '1px 5px', borderRadius: '3px', letterSpacing: '0.04em', lineHeight: 1.2 }}>RATING</span>
+                        ★ {movie.r.toFixed(1)}/10
+                      </span>
+                    ) : (
+                      <span className="meta-rating" style={{ color: '#888', fontSize: '0.8rem' }}>Unrated</span>
+                    ))}
                   </div>
                   <p id="modalBlurb">{movie.blurb || 'No synopsis available for this title.'}</p>
                   
