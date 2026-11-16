@@ -785,8 +785,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     gsap.killTweensOf(animStateRef.current);
     gsap.to(animStateRef.current, {
       progress: clamped,
-      duration: 0.52,
-      ease: 'power2.out',
+      duration: 0.56,
+      ease: 'power3.out',
       onUpdate: () => {
         const rounded = Math.round(animStateRef.current.progress);
         if (rounded !== activeIndexRef.current) {
@@ -1209,10 +1209,10 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
     // Precise Cursor-Aware Scrolling:
     // Strictly advances ONE disc per scroll gesture, absorbing high-force momentum or rapid trackpad flings.
-    let lastWheelStepTime = 0;
+    let hasSteppedInGesture = false;
     let wheelDeltaAccumulator = 0;
-    let wheelGestureTimer: any = null;
-    let isGestureLocked = false;
+    let gestureEndTimer: any = null;
+    let lastDirection = 0;
 
     const handleWheel = (e: WheelEvent) => {
       // If any modal, dialog, or overlay is open on the page, DO NOT INTERCEPT WHEEL!
@@ -1249,42 +1249,42 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       }
       if (Math.abs(delta) < 1.0) return;
 
-      const now = performance.now();
-      const isDiscreteClick = Math.abs(delta) >= 30;
+      const direction = delta > 0 ? 1 : -1;
 
-      // Quickly reset gesture lock after user stops scrolling (120ms of silence)
-      clearTimeout(wheelGestureTimer);
-      wheelGestureTimer = setTimeout(() => {
-        isGestureLocked = false;
+      // If user reversed scroll direction, reset step lock immediately to allow instant direction change
+      if (hasSteppedInGesture && direction !== lastDirection && Math.abs(delta) > 8) {
+        hasSteppedInGesture = false;
         wheelDeltaAccumulator = 0;
-      }, 120);
+      }
 
-      // If gesture is locked from high-force fling, release if cooldown expired or user reversed direction
-      if (isGestureLocked) {
-        const cooldown = isDiscreteClick ? 150 : 240;
-        const hasReversed = (wheelDeltaAccumulator > 0 && delta < -8) || (wheelDeltaAccumulator < 0 && delta > 8);
-        if (now - lastWheelStepTime > cooldown || hasReversed) {
-          isGestureLocked = false;
-          wheelDeltaAccumulator = 0;
-        } else {
-          return;
-        }
+      // 180ms of silence indicates the current scroll gesture (or trackpad flick) has ended
+      clearTimeout(gestureEndTimer);
+      gestureEndTimer = setTimeout(() => {
+        hasSteppedInGesture = false;
+        wheelDeltaAccumulator = 0;
+      }, 180);
+
+      // CRITICAL: If this gesture has already advanced a disc, lock out all momentum / high-force events
+      // Ensures that ANY applied force (fast flick, free-spin wheel) advances strictly ONE disc, NEVER "all at once"
+      if (hasSteppedInGesture) {
+        return;
       }
 
       wheelDeltaAccumulator += delta;
 
-      const threshold = isDiscreteClick ? 12 : 18;
-      const minStepInterval = isDiscreteClick ? 130 : 200;
+      const isDiscreteClick = Math.abs(delta) >= 28 || e.deltaMode === 1;
+      const threshold = isDiscreteClick ? 12 : 20;
 
-      if (Math.abs(wheelDeltaAccumulator) >= threshold && (now - lastWheelStepTime >= minStepInterval)) {
-        lastWheelStepTime = now;
-        isGestureLocked = true;
-        if (wheelDeltaAccumulator > 0) {
+      if (Math.abs(wheelDeltaAccumulator) >= threshold) {
+        hasSteppedInGesture = true;
+        lastDirection = direction;
+        wheelDeltaAccumulator = 0;
+
+        if (direction > 0) {
           handleNextRef.current();
         } else {
           handlePrevRef.current();
         }
-        wheelDeltaAccumulator = 0;
       }
     };
 
