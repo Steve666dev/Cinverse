@@ -55,7 +55,7 @@ function AppInner() {
   const { watchlist } = useWatchlist();
 
   const preloadReelPosters = (list: Movie[]) => {
-    list.forEach(m => {
+    list.slice(0, 8).forEach(m => {
       if (m.img) {
         const img = new Image();
         img.src = m.img;

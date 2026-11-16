@@ -24,15 +24,17 @@ export function LocomotiveScrollProvider({ children }: { children: React.ReactNo
 
     // Small delay so the DOM is fully painted before LS measures heights
     const timer = setTimeout(() => {
+      const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
       const options: ILocomotiveScrollOptions = {
         autoStart: true,
         lenisOptions: {
-          duration: 0.7,
+          duration: 0.8,
           orientation: 'vertical',
           gestureOrientation: 'vertical',
           smoothWheel: true,
-          wheelMultiplier: 1.1,
-          touchMultiplier: 1.2,
+          syncTouch: false,
+          wheelMultiplier: 1.0,
+          touchMultiplier: isTouch ? 1.0 : 1.1,
         }
       };
 

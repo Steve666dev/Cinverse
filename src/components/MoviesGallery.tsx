@@ -97,7 +97,7 @@ function loadPosterDiscTextures(
     tex.generateMipmaps = true;
     tex.minFilter = THREE.LinearMipmapLinearFilter;
     tex.magFilter = THREE.LinearFilter;
-    tex.anisotropy = 16;
+    tex.anisotropy = 4;
     tex.wrapS = THREE.ClampToEdgeWrapping;
     tex.wrapT = THREE.ClampToEdgeWrapping;
 
@@ -856,10 +856,11 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     camera.position.set(0, camConfig.y, camConfig.z);
     cameraRef.current = camera;
 
-    // 2. Renderer with tone mapping for photorealism
+    // 2. Renderer with tone mapping for photorealism (capped pixel ratio for high FPS on mobile/tablets/laptops)
+    const isMobileOrTablet = width <= 1024 || (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(isMobileOrTablet ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 1.75));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
     rendererRef.current = renderer;
@@ -888,35 +889,31 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     scene.add(galleryGroup);
     galleryGroupRef.current = galleryGroup;
 
-    // 4. Shared Geometries & Textures
+    // 4. Shared Geometries & Textures (Optimized geometry complexity & StandardMaterial for smooth GPU performance)
     const vinylTexture = createVinylTexture();
-    const vinylGeo = new THREE.CylinderGeometry(1.18, 1.18, 0.014, 64);
-    const vinylMat = new THREE.MeshPhysicalMaterial({
+    const vinylGeo = new THREE.CylinderGeometry(1.18, 1.18, 0.014, 48);
+    const vinylMat = new THREE.MeshStandardMaterial({
       color: 0x0c0e11,
-      roughness: 0.32,
-      metalness: 0.75,
-      clearcoat: 0.85,
-      clearcoatRoughness: 0.08,
+      roughness: 0.35,
+      metalness: 0.72,
       roughnessMap: vinylTexture,
-      bumpMap: vinylTexture,
-      bumpScale: 0.005,
-      side: THREE.DoubleSide
+      side: THREE.FrontSide
     });
 
-    const labelGeo = new THREE.CircleGeometry(1.15, 64);
-    const spindleGeo = new THREE.RingGeometry(0.09, 0.18, 48);
+    const labelGeo = new THREE.CircleGeometry(1.15, 48);
+    const spindleGeo = new THREE.RingGeometry(0.09, 0.18, 32);
     const spindleMat = new THREE.MeshStandardMaterial({
       color: 0xe0e6ed,
       metalness: 0.92,
       roughness: 0.15,
-      side: THREE.DoubleSide
+      side: THREE.FrontSide
     });
 
     // 5. Build 3D Discs
     const textureLoader = new THREE.TextureLoader();
     (window as any).__cinverse = { scene, discsRef, filmsRef, textureLoader, THREE };
-    const centerHoleGeo = new THREE.CircleGeometry(0.088, 32);
-    const centerHoleMat = new THREE.MeshBasicMaterial({ color: 0x050608, side: THREE.DoubleSide });
+    const centerHoleGeo = new THREE.CircleGeometry(0.088, 24);
+    const centerHoleMat = new THREE.MeshBasicMaterial({ color: 0x050608, side: THREE.FrontSide });
 
     const buildDiscs = (filmList: A24Film[]) => {
       console.log('[buildDiscs] Building discs for films:', filmList.length);
@@ -941,13 +938,13 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         vinylMesh.rotation.x = Math.PI / 2;
         discGroup.add(vinylMesh);
 
-        // Cleanly aligned movie poster CD picture disc texture
+        // Cleanly aligned movie poster CD picture disc texture (FrontSide prevents overdraw & Z-fighting)
         const frontMat = new THREE.MeshBasicMaterial({
-          side: THREE.DoubleSide
+          side: THREE.FrontSide
         });
 
         const backMat = new THREE.MeshBasicMaterial({
-          side: THREE.DoubleSide
+          side: THREE.FrontSide
         });
 
         const { frontTexture, backTexture } = loadPosterDiscTextures(textureLoader, film, () => {
@@ -1035,6 +1032,9 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     const activeDiscY = 0.06;
     const flowBank = 0.28;
 
+    let idleFrames = 0;
+    const resetIdle = () => { idleFrames = 0; };
+
     const animate = () => {
       reqId = requestAnimationFrame(animate);
 
@@ -1044,17 +1044,32 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       }
 
       // Smooth mouse parallax interpolation
-      currentTiltRef.current.x += (targetTiltRef.current.x - currentTiltRef.current.x) * 0.06;
-      currentTiltRef.current.y += (targetTiltRef.current.y - currentTiltRef.current.y) * 0.06;
-
-      if (galleryGroupRef.current) {
-        galleryGroupRef.current.rotation.x = currentTiltRef.current.x;
-        galleryGroupRef.current.rotation.y = currentTiltRef.current.y;
+      const tiltDiffX = targetTiltRef.current.x - currentTiltRef.current.x;
+      const tiltDiffY = targetTiltRef.current.y - currentTiltRef.current.y;
+      if (Math.abs(tiltDiffX) > 0.0001 || Math.abs(tiltDiffY) > 0.0001) {
+        currentTiltRef.current.x += tiltDiffX * 0.06;
+        currentTiltRef.current.y += tiltDiffY * 0.06;
+        if (galleryGroupRef.current) {
+          galleryGroupRef.current.rotation.x = currentTiltRef.current.x;
+          galleryGroupRef.current.rotation.y = currentTiltRef.current.y;
+        }
       }
 
       // Position each disc based on float progress
       const progress = animStateRef.current.progress;
+      const isProgressSettled = Math.abs(progress - prevProgressRef.current) < 0.0001;
       prevProgressRef.current = progress;
+
+      // Smart power saving: pause re-rendering after 15 static idle frames to keep device cool and prevent thermal throttling
+      const isStill = !isDraggingRef.current && !isAnimatingRef.current && !isSpinningRef.current && isProgressSettled && Math.abs(tiltDiffX) < 0.0003 && Math.abs(tiltDiffY) < 0.0003;
+      if (isStill) {
+        idleFrames++;
+        if (idleFrames > 15) {
+          return;
+        }
+      } else {
+        idleFrames = 0;
+      }
 
       discsRef.current.forEach((dg, idx) => {
         const diff = idx - progress;
@@ -1077,8 +1092,8 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         const baseScale = Math.max(0.68, 1.0 - absDiff * 0.14);
         dg.scale.set(baseScale, baseScale, baseScale);
 
-        // Culling / visibility optimization
-        dg.visible = absDiff < 4.5;
+        // Culling / visibility optimization (cull beyond 3.8 discs)
+        dg.visible = absDiff < 3.8;
       });
 
       renderer.render(scene, camera);
@@ -1088,12 +1103,18 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
     // 8. Event Listeners: Resize, Pointer/Touch, Wheel, Parallax (throttled via requestAnimationFrame)
     let resizeRafId: number | null = null;
+    let lastRenderW = 0;
+    let lastRenderH = 0;
     const handleResize = () => {
       if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
       resizeRafId = requestAnimationFrame(() => {
         if (!canvasMountRef.current || !rendererRef.current || !cameraRef.current) return;
         const w = canvasMountRef.current.clientWidth || window.innerWidth;
         const h = canvasMountRef.current.clientHeight || window.innerHeight;
+        if (Math.abs(w - lastRenderW) < 3 && Math.abs(h - lastRenderH) < 3) return;
+        lastRenderW = w;
+        lastRenderH = h;
+        resetIdle();
         const cam = cameraRef.current as THREE.PerspectiveCamera;
         cam.aspect = w / h;
         const camConfig = getResponsiveCameraConfig(w, h);
@@ -1158,6 +1179,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     const handleMouseMove = (e: MouseEvent) => {
       if (document.hidden || document.body.style.overflow === 'hidden' || !isGalleryVisible) return;
       if (window.matchMedia('(pointer: coarse)').matches) return;
+      resetIdle();
       const nx = (e.clientX / window.innerWidth) * 2 - 1;
       const ny = (e.clientY / window.innerHeight) * 2 - 1;
       mousePosRef.current = { x: nx, y: ny };
@@ -1206,6 +1228,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
+      resetIdle();
 
       const now = performance.now();
       const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
@@ -1256,6 +1279,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       ) {
         return;
       }
+      resetIdle();
       isDraggingRef.current = true;
       hasDraggedRef.current = false;
       pointerStartX = e.clientX;
@@ -1267,6 +1291,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
     const handlePointerMove = (e: PointerEvent) => {
       if (!isDraggingRef.current) return;
+      resetIdle();
       const dx = e.clientX - pointerStartX;
       const dy = e.clientY - pointerStartY;
       const absDx = Math.abs(dx);
@@ -1299,6 +1324,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
     const handlePointerUp = (e: PointerEvent) => {
       if (!isDraggingRef.current && pointerDirection !== 'horizontal') return;
+      resetIdle();
       isDraggingRef.current = false;
       if (domEl) domEl.style.cursor = 'grab';
 

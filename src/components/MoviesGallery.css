@@ -24,6 +24,8 @@
   z-index: 1;
   cursor: grab;
   touch-action: pan-y;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .a24-experience-canvas:active {

@@ -45,7 +45,8 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
     let cw = (c.width = window.innerWidth);
     let ch = (c.height = window.innerHeight);
     let radius = Math.max(cw, ch);
-    const particles = Array(99).fill(null);
+    const particleCount = typeof window !== 'undefined' && window.innerWidth < 768 ? 48 : 78;
+    const particles = Array(particleCount).fill(null);
     let tl: gsap.core.Timeline | null = null;
     let isActive = true;
 
