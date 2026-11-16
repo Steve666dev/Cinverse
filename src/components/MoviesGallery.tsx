@@ -615,12 +615,12 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
   const isDraggingRef = useRef(false);
   const hasDraggedRef = useRef(false);
   const isSpinningRef = useRef(false);
+  const spinningDiscIdxRef = useRef<number | null>(null);
   const activeIndexRef = useRef(0);
   activeIndexRef.current = activeIndex;
   const targetIndexRef = useRef(0);
   const prevProgressRef = useRef(0);
 
-  const startXRef = useRef(0);
   const startProgressRef = useRef(0);
   const mousePosRef = useRef({ x: 0, y: 0 });
   const targetTiltRef = useRef({ x: -0.15, y: 0 });
@@ -715,13 +715,14 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       .catch(() => {});
   }, [activeFilm?.id]);
 
-  // Circle active disc 360 degrees from right to left side
-  const triggerDiscSpin = useCallback((_film: A24Film, targetDisc?: THREE.Group) => {
+  // Circle active or clicked disc 360 degrees
+  const triggerDiscSpin = useCallback((_film: A24Film, targetDisc?: THREE.Group, discIndex?: number) => {
     if (isSpinningRef.current) return;
-    const currentIdx = activeIndexRef.current;
+    const currentIdx = typeof discIndex === 'number' ? discIndex : activeIndexRef.current;
     const disc = targetDisc || discsRef.current[currentIdx];
     if (!disc) return;
 
+    spinningDiscIdxRef.current = currentIdx;
     isSpinningRef.current = true;
     gsap.killTweensOf(disc.rotation);
     gsap.killTweensOf(disc.position);
@@ -729,31 +730,31 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     const startY = disc.rotation.y;
     const origZ = disc.position.z;
 
-    // 1. Horizontal 360-degree spin from right to left side around vertical axis (Y-axis)
-    // Moving from startY to startY - 2*PI turns the front face cleanly towards the left
+    // 1. Full 360-degree rotation cleanly around vertical Y-axis
     gsap.to(disc.rotation, {
       y: startY - Math.PI * 2,
-      duration: 1.25,
-      ease: 'power3.inOut',
+      duration: 0.95,
+      ease: 'power2.inOut',
       onComplete: () => {
         disc.rotation.y = 0;
         disc.rotation.z = 0;
         disc.position.z = origZ;
+        spinningDiscIdxRef.current = null;
         isSpinningRef.current = false;
       }
     });
 
     // 2. Tactile 3D forward floating elevation pop
     gsap.to(disc.position, {
-      z: origZ + 0.38,
-      duration: 0.62,
+      z: origZ + 0.35,
+      duration: 0.47,
       yoyo: true,
       repeat: 1,
       ease: 'power2.out'
     });
   }, []);
 
-  const triggerSpinRef = useRef<(film: A24Film, disc?: THREE.Group) => void>(() => {});
+  const triggerSpinRef = useRef<(film: A24Film, disc?: THREE.Group, discIndex?: number) => void>(() => {});
   triggerSpinRef.current = triggerDiscSpin;
 
   // Glide to specific index smoothly & cleanly one-by-one with GSAP
@@ -992,7 +993,6 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
     // 6. GSAP Entrance Animation (Center disc rises up and fans out)
     const introTl = gsap.timeline();
-    let isIntroFinished = false;
     const centerDisc = discsRef.current[0];
     if (centerDisc) {
       introTl.fromTo(centerDisc.position, 
@@ -1011,10 +1011,6 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         { x: 0.8, y: 0.8, z: 0.8, duration: 1.2, ease: 'power3.out' }, 
         0.3 + i * 0.04
       );
-    });
-
-    introTl.call(() => {
-      isIntroFinished = true;
     });
 
     // 7. Interactive Physics & Render Loop
@@ -1061,14 +1057,12 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         dg.position.x = diff * hGap;
 
         // If this disc is active and spinning, allow GSAP to freely animate Y/Z rotation and position
-        if (!isSpinningRef.current || idx !== activeIndexRef.current) {
+        const isThisSpinning = spinningDiscIdxRef.current === idx;
+        if (!isThisSpinning) {
           dg.position.z = -absDiff * depthGap;
           dg.rotation.y = diff * flowBank;
-          dg.rotation.x = -0.12 + Math.sin(diff * 0.4) * 0.02;
-          if (isIntroFinished) {
-            // Subtle rotational roll momentum while scrolling through discs
-            dg.rotation.z += ((-diff * 0.12) - dg.rotation.z) * 0.12;
-          }
+          dg.rotation.x = -0.12;
+          dg.rotation.z = 0;
         }
         dg.position.y = Math.max(0, 1 - absDiff) * activeDiscY;
 
@@ -1156,6 +1150,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     // Lightweight passive mouse movement parallax & dynamic CD hover cursor
     const handleMouseMove = (e: MouseEvent) => {
       if (document.hidden || document.body.style.overflow === 'hidden' || !isGalleryVisible) return;
+      if (window.matchMedia('(pointer: coarse)').matches) return;
       const nx = (e.clientX / window.innerWidth) * 2 - 1;
       const ny = (e.clientY / window.innerHeight) * 2 - 1;
       mousePosRef.current = { x: nx, y: ny };
@@ -1242,51 +1237,112 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
     window.addEventListener('wheel', handleWheel, { passive: false, capture: true });
 
-    // Drag / Swipe Interaction
+    // Unified Drag / Swipe Interaction (Mouse, Touch, Stylus across Desktop, Tablets & Mobile)
+    let pointerStartX = 0;
+    let pointerStartY = 0;
+    let pointerStartTime = 0;
+    let pointerDirection: 'none' | 'horizontal' | 'vertical' = 'none';
+
     const handlePointerDown = (e: PointerEvent) => {
+      if (
+        document.body.style.overflow === 'hidden' ||
+        document.getElementById('modalCard') ||
+        document.querySelector('.header-motion-search-overlay.open') ||
+        document.querySelector('.trailer-lightbox')
+      ) {
+        return;
+      }
       isDraggingRef.current = true;
       hasDraggedRef.current = false;
-      domEl.style.cursor = 'grabbing';
-      startXRef.current = e.clientX;
+      pointerStartX = e.clientX;
+      pointerStartY = e.clientY;
+      pointerStartTime = performance.now();
+      pointerDirection = 'none';
       startProgressRef.current = animStateRef.current.progress;
-      gsap.killTweensOf(animStateRef.current);
     };
 
     const handlePointerMove = (e: PointerEvent) => {
       if (!isDraggingRef.current) return;
-      const deltaX = (e.clientX - startXRef.current);
-      if (Math.abs(deltaX) > 6) {
-        hasDraggedRef.current = true;
+      const dx = e.clientX - pointerStartX;
+      const dy = e.clientY - pointerStartY;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      if (pointerDirection === 'none') {
+        if (absDy > 10 && absDy > absDx) {
+          // Vertical page scroll -> release drag immediately so browser handles natural scroll
+          pointerDirection = 'vertical';
+          isDraggingRef.current = false;
+          hasDraggedRef.current = false;
+          return;
+        } else if (absDx > 7 && absDx > absDy) {
+          pointerDirection = 'horizontal';
+          hasDraggedRef.current = true;
+          gsap.killTweensOf(animStateRef.current);
+          if (domEl) domEl.style.cursor = 'grabbing';
+        }
       }
-      // Horizontal scrub factor
-      const scrub = -deltaX / (window.innerWidth * 0.4);
-      const total = filmsRef.current.length || 1;
-      const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + scrub));
-      animStateRef.current.progress = nextP;
-      const newIdx = Math.round(nextP);
-      if (newIdx !== activeIndexRef.current) {
-        activeIndexRef.current = newIdx;
-        setActiveIndex(newIdx);
+
+      if (pointerDirection === 'horizontal') {
+        // Horizontal CD carousel scrub without triggering React re-renders mid-drag
+        const scrub = -dx / (window.innerWidth * 0.42);
+        const total = filmsRef.current.length || 1;
+        const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + scrub));
+        animStateRef.current.progress = nextP;
       }
     };
 
-    const handlePointerUp = () => {
+    const handlePointerUp = (e: PointerEvent) => {
+      if (!isDraggingRef.current && pointerDirection !== 'horizontal') return;
+      isDraggingRef.current = false;
+      if (domEl) domEl.style.cursor = 'grab';
+
+      if (pointerDirection === 'horizontal' && hasDraggedRef.current) {
+        const elapsed = Math.max(1, performance.now() - pointerStartTime);
+        const dx = e.clientX - pointerStartX;
+        const vx = dx / elapsed;
+
+        let targetIndex = Math.round(animStateRef.current.progress);
+        if (Math.abs(vx) > 0.25 || Math.abs(dx) > 35) {
+          targetIndex = dx < 0 ? Math.ceil(startProgressRef.current) : Math.floor(startProgressRef.current);
+          if (targetIndex === activeIndexRef.current) {
+            targetIndex = dx < 0 ? activeIndexRef.current + 1 : activeIndexRef.current - 1;
+          }
+        }
+
+        const total = filmsRef.current.length || 1;
+        targetIndex = Math.max(0, Math.min(total - 1, targetIndex));
+        glideToIndex(targetIndex);
+
+        setTimeout(() => {
+          hasDraggedRef.current = false;
+        }, 60);
+      }
+      pointerDirection = 'none';
+    };
+
+    const handlePointerCancel = () => {
       if (!isDraggingRef.current) return;
       isDraggingRef.current = false;
-      domEl.style.cursor = 'default';
+      if (domEl) domEl.style.cursor = 'grab';
       const nearest = Math.round(animStateRef.current.progress);
       glideToIndex(nearest);
+      setTimeout(() => {
+        hasDraggedRef.current = false;
+      }, 60);
+      pointerDirection = 'none';
     };
 
     domEl.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
 
     const raycaster = new THREE.Raycaster();
     const mouseVector = new THREE.Vector2();
 
     const handleClick = (e: MouseEvent) => {
-      // If user dragged/scrubbed the carousel, do not treat as a spin/trailer click
+      // If user dragged/scrubbed the carousel, do not treat as a spin click
       if (hasDraggedRef.current) {
         hasDraggedRef.current = false;
         return;
@@ -1326,21 +1382,21 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       }
 
       if (targetFilm) {
-        // 1. Spin CD 360 degrees
-        if (targetDiscGroup) {
-          triggerSpinRef.current(targetFilm, targetDiscGroup);
+        const resolvedIdx = targetIndex !== null ? targetIndex : activeIndexRef.current;
+        const discToSpin = targetDiscGroup || discsRef.current[resolvedIdx];
+
+        // 1. One full 360-degree rotation for every CD clicked
+        if (discToSpin) {
+          triggerSpinRef.current(targetFilm, discToSpin, resolvedIdx);
         }
 
+        // If clicking a side CD, glide it to active center while it spins
         if (targetIndex !== null && targetIndex !== activeIndexRef.current) {
           glideToIndex(targetIndex);
         }
 
-        // 2. Play the trailer!
-        const filmToPlay = targetFilm;
-        setSelectedFilmForTrailer(filmToPlay);
-        setTimeout(() => {
-          setIsTrailerOpen(true);
-        }, 220);
+        // Update selected film for trailer
+        setSelectedFilmForTrailer(targetFilm);
       }
     };
 
@@ -1357,137 +1413,20 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
     window.addEventListener('keydown', handleKeyDown);
 
-    // 9. Full Mobile & Tablet Touch / Swipe Gesture Interaction
-    const heroEl: HTMLElement | null = containerRef.current || domEl;
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchStartTime = 0;
-    let isTouchActive = false;
-    let isHorizontalSwipe = false;
-    let isVerticalCdSwipe = false;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      if (
-        document.body.style.overflow === 'hidden' ||
-        document.getElementById('modalCard') ||
-        document.querySelector('.header-motion-search-overlay.open') ||
-        document.querySelector('.trailer-lightbox')
-      ) {
-        return;
-      }
-      if (e.touches.length !== 1) return;
-      const touch = e.touches[0];
-      touchStartX = touch.clientX;
-      touchStartY = touch.clientY;
-      touchStartTime = performance.now();
-      isTouchActive = true;
-      isHorizontalSwipe = false;
-      isVerticalCdSwipe = false;
-      hasDraggedRef.current = false;
-      startProgressRef.current = animStateRef.current.progress;
-      gsap.killTweensOf(animStateRef.current);
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (!isTouchActive || e.touches.length !== 1) return;
-      const touch = e.touches[0];
-      const dx = touch.clientX - touchStartX;
-      const dy = touch.clientY - touchStartY;
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
-
-      if (!isHorizontalSwipe && !isVerticalCdSwipe) {
-        if (absDx > 8 && absDx > absDy) {
-          isHorizontalSwipe = true;
-          hasDraggedRef.current = true;
-        } else if (absDy > 10 && absDy > absDx && checkIsOverCdCircle(touchStartX, touchStartY)) {
-          isVerticalCdSwipe = true;
-          hasDraggedRef.current = true;
-        }
-      }
-
-      if (isHorizontalSwipe) {
-        if (e.cancelable) e.preventDefault();
-        const scrub = -dx / (window.innerWidth * 0.45);
-        const total = filmsRef.current.length || 1;
-        const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + scrub));
-        animStateRef.current.progress = nextP;
-        const newIdx = Math.round(nextP);
-        if (newIdx !== activeIndexRef.current) {
-          activeIndexRef.current = newIdx;
-          setActiveIndex(newIdx);
-        }
-      } else if (isVerticalCdSwipe) {
-        if (e.cancelable) e.preventDefault();
-        const scrub = dy / (window.innerHeight * 0.45);
-        const total = filmsRef.current.length || 1;
-        const nextP = Math.max(0, Math.min(total - 1, startProgressRef.current + scrub));
-        animStateRef.current.progress = nextP;
-        const newIdx = Math.round(nextP);
-        if (newIdx !== activeIndexRef.current) {
-          activeIndexRef.current = newIdx;
-          setActiveIndex(newIdx);
-        }
-      }
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (!isTouchActive) return;
-      isTouchActive = false;
-
-      if (hasDraggedRef.current) {
-        const touch = e.changedTouches[0];
-        const dx = touch ? touch.clientX - touchStartX : 0;
-        const dy = touch ? touch.clientY - touchStartY : 0;
-        const elapsed = Math.max(1, performance.now() - touchStartTime);
-        const vx = dx / elapsed;
-
-        let targetIndex = Math.round(animStateRef.current.progress);
-        if (isHorizontalSwipe) {
-          if (Math.abs(vx) > 0.3 || Math.abs(dx) > 35) {
-            targetIndex = dx < 0 ? Math.ceil(startProgressRef.current) : Math.floor(startProgressRef.current);
-            if (targetIndex === activeIndexRef.current) {
-              targetIndex = dx < 0 ? activeIndexRef.current + 1 : activeIndexRef.current - 1;
-            }
-          }
-        } else if (isVerticalCdSwipe) {
-          if (Math.abs(dy) > 25) {
-            targetIndex = dy < 0 ? activeIndexRef.current + 1 : activeIndexRef.current - 1;
-          }
-        }
-
-        const total = filmsRef.current.length || 1;
-        targetIndex = Math.max(0, Math.min(total - 1, targetIndex));
-        glideToIndex(targetIndex);
-      }
-    };
-
-    if (heroEl) {
-      heroEl.addEventListener('touchstart', handleTouchStart as EventListener, { passive: true });
-      heroEl.addEventListener('touchmove', handleTouchMove as EventListener, { passive: false });
-      heroEl.addEventListener('touchend', handleTouchEnd as EventListener, { passive: true });
-      heroEl.addEventListener('touchcancel', handleTouchEnd as EventListener, { passive: true });
-    }
-
     // Cleanup on unmount
     return () => {
-      if (heroEl) {
-        heroEl.removeEventListener('touchstart', handleTouchStart as EventListener);
-        heroEl.removeEventListener('touchmove', handleTouchMove as EventListener);
-        heroEl.removeEventListener('touchend', handleTouchEnd as EventListener);
-        heroEl.removeEventListener('touchcancel', handleTouchEnd as EventListener);
-      }
       galleryObserver?.disconnect();
       cancelAnimationFrame(reqId);
       if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
+      domEl.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
+      domEl.removeEventListener('click', handleClick);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('wheel', handleWheel, { capture: true });
-      domEl.removeEventListener('pointerdown', handlePointerDown);
-      domEl.removeEventListener('click', handleClick);
 
       if (mount.contains(domEl)) {
         mount.removeChild(domEl);

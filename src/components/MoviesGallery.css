@@ -23,7 +23,7 @@
   height: 100%;
   z-index: 1;
   cursor: grab;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .a24-experience-canvas:active {
