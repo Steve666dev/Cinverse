@@ -1136,12 +1136,19 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     const tempVec3 = new THREE.Vector3();
     const tempEdge = new THREE.Vector3();
 
-    const checkIsOverCdCircle = (clientX: number, clientY: number): boolean => {
+    const raycaster = new THREE.Raycaster();
+    const mouseVector = new THREE.Vector2();
+
+    // Precise CD Detection:
+    // Returns true ONLY when cursor is actually ON the CD (center circular disc or any visible side disc).
+    // Returns false when cursor is OUTSIDE the CD, allowing natural webpage scrolling!
+    const checkIsOverCd = (clientX: number, clientY: number): boolean => {
       if (!domEl || !cameraRef.current) return false;
       const rect = domEl.getBoundingClientRect();
       if (rect.bottom <= 50 || rect.top >= window.innerHeight - 50) return false;
       if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return false;
 
+      // 1. Precise center CD circle: exact projected 2D disc
       tempVec3.set(0, 0.28, 0);
       tempVec3.project(cameraRef.current);
       const centerScreenX = rect.left + (tempVec3.x * 0.5 + 0.5) * rect.width;
@@ -1154,39 +1161,24 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
       const dx = clientX - centerScreenX;
       const dy = clientY - centerScreenY;
-      return Math.hypot(dx, dy) <= cdRadiusPx;
+      if (Math.hypot(dx, dy) <= cdRadiusPx) {
+        return true;
+      }
+
+      // 2. Exact 3D mesh hit test for visible side discs
+      if (galleryGroupRef.current && cameraRef.current) {
+        mouseVector.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        mouseVector.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouseVector, cameraRef.current);
+        const hits = raycaster.intersectObjects(galleryGroupRef.current.children, true);
+        if (hits.length > 0) {
+          return true;
+        }
+      }
+
+      return false;
     };
 
-    const checkIsOverCdCarousel = (clientX: number, clientY: number): boolean => {
-      if (!domEl || !cameraRef.current) return false;
-      const rect = domEl.getBoundingClientRect();
-      if (rect.bottom <= 50 || rect.top >= window.innerHeight - 50) return false;
-      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return false;
-
-      tempVec3.set(0, 0.28, 0);
-      tempVec3.project(cameraRef.current);
-      const centerScreenX = rect.left + (tempVec3.x * 0.5 + 0.5) * rect.width;
-      const centerScreenY = rect.top + (-tempVec3.y * 0.5 + 0.5) * rect.height;
-
-      tempEdge.set(1.22, 0.28, 0);
-      tempEdge.project(cameraRef.current);
-      const edgeScreenX = rect.left + (tempEdge.x * 0.5 + 0.5) * rect.width;
-      const cdRadiusPx = Math.abs(edgeScreenX - centerScreenX);
-
-      const dx = clientX - centerScreenX;
-      const dy = clientY - centerScreenY;
-
-      // Center CD circle check
-      if (Math.hypot(dx, dy) <= cdRadiusPx * 1.1) return true;
-
-      // Full horizontal carousel zone covering left and right visible discs
-      const isInDiscsBandY = Math.abs(dy) <= cdRadiusPx * 1.35;
-      const isInDiscsBandX = Math.abs(dx) <= cdRadiusPx * 3.2;
-
-      return isInDiscsBandY && isInDiscsBandX;
-    };
-
-    // Lightweight passive mouse movement parallax & dynamic CD hover cursor
     const handleMouseMove = (e: MouseEvent) => {
       if (document.hidden || document.body.style.overflow === 'hidden' || !isGalleryVisible) return;
       if (window.matchMedia('(pointer: coarse)').matches) return;
@@ -1200,7 +1192,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       };
 
       if (!isDraggingRef.current && domEl) {
-        const isOver = checkIsOverCdCarousel(e.clientX, e.clientY);
+        const isOver = checkIsOverCd(e.clientX, e.clientY);
         domEl.style.cursor = isOver ? 'grab' : 'default';
       }
     };
@@ -1229,7 +1221,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         return;
       }
 
-      const isOverCd = checkIsOverCdCarousel(e.clientX, e.clientY);
+      const isOverCd = checkIsOverCd(e.clientX, e.clientY);
 
       // If cursor is outside the CD carousel zone, do NOT intercept -> natural page scroll!
       if (!isOverCd) {
@@ -1404,8 +1396,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     window.addEventListener('pointerup', handlePointerUp);
     window.addEventListener('pointercancel', handlePointerCancel);
 
-    const raycaster = new THREE.Raycaster();
-    const mouseVector = new THREE.Vector2();
+    
 
     const handleClick = (e: MouseEvent) => {
       // If user dragged/scrubbed the carousel, do not treat as a spin click
@@ -1440,7 +1431,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       }
 
       // Fallback: projected circle bounds check
-      if (!targetFilm && checkIsOverCdCircle(e.clientX, e.clientY)) {
+      if (!targetFilm && checkIsOverCd(e.clientX, e.clientY)) {
         const curIdx = activeIndexRef.current;
         targetIndex = curIdx;
         targetDiscGroup = discsRef.current[curIdx] || null;
