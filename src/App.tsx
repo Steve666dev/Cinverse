@@ -98,7 +98,7 @@ function AppInner() {
   const checkReadiness = useCallback(() => {
     if (hasTriggeredFadeRef.current) return;
     const elapsed = Date.now() - introStartTimeRef.current;
-    const MIN_INTRO_DURATION = 800; // Fast and snappy intro reveal
+    const MIN_INTRO_DURATION = 2800; // Calibrated to allow user to experience the full cinematic intro animation and poster vortex
     if (elapsed < MIN_INTRO_DURATION) {
       setTimeout(checkReadiness, MIN_INTRO_DURATION - elapsed);
       return;
@@ -162,12 +162,12 @@ function AppInner() {
       }
     }).catch(err => console.error('Romance error:', err));
 
-    // Safety timeout: Never keep the user waiting more than 3.5s even if network is slow
+    // Safety timeout: Never keep the user waiting more than 5.5s even if network is slow
     const safetyTimeout = setTimeout(() => {
       if (!hasTriggeredFadeRef.current) {
         triggerReveal();
       }
-    }, 3500);
+    }, 5500);
 
     return () => {
       isCancelled = true;

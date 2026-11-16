@@ -95,23 +95,26 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
     }
 
     async function init() {
-      // 1. Fetch just 1 page (fast) to start the animation cleanly with real posters
-      let posters = await fetchUniqueMovies(20, 1);
-
-      // If network fails or empty, fallback to cached theatrical posters
-      if (posters.length === 0) {
+      // 1. Fetch cached theatrical posters and dynamic TMDB posters in parallel for instant zero-delay start
+      const fetchCache = async (): Promise<string[]> => {
         try {
           const cRes = await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null);
           if (cRes && cRes.ok) {
             const cData = await cRes.json().catch(() => null);
             if (Array.isArray(cData?.movies)) {
-              for (const m of cData.movies) {
-                if (m.posterUrl) posters.push(m.posterUrl);
-              }
+              return cData.movies.map((m: any) => m.posterUrl).filter(Boolean);
             }
           }
         } catch {}
-      }
+        return [];
+      };
+
+      const [cachedPosters, dynamicPosters] = await Promise.all([
+        fetchCache(),
+        fetchUniqueMovies(20, 1)
+      ]);
+
+      const posters = dynamicPosters.length > 0 ? dynamicPosters : cachedPosters;
 
       if (!isActive) return;
 
