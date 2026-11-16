@@ -187,8 +187,8 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
       ctx.clearRect(0, 0, cw, ch);
       ctx.imageSmoothingEnabled = true;
 
-      // Base poster dimensions for uniform, elegant cinematic swirl (eliminates oversized/huge posters)
-      const baseWidth = Math.max(65, Math.min(95, Math.min(cw, ch) * 0.085));
+      // Base poster dimensions for uniform, elegant cinematic swirl (consistently sized & clearly visible)
+      const baseWidth = Math.max(115, Math.min(165, Math.min(cw, ch) * 0.14));
 
       particles.forEach((p) => {
         ctx.translate(cw / 2, ch / 2);
