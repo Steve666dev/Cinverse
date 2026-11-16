@@ -785,18 +785,21 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     gsap.killTweensOf(animStateRef.current);
     gsap.to(animStateRef.current, {
       progress: clamped,
-      duration: 0.48,
-      ease: 'sine.out',
+      duration: 0.38,
+      ease: 'power2.out',
       onUpdate: () => {
-        const rounded = Math.round(animStateRef.current.progress);
-        if (rounded !== activeIndexRef.current) {
-          activeIndexRef.current = rounded;
-          setActiveIndex(rounded);
+        const p = animStateRef.current.progress;
+        if (Math.abs(clamped - p) < 0.25) {
+          if (activeIndexRef.current !== clamped) {
+            activeIndexRef.current = clamped;
+            setActiveIndex(clamped);
+          }
         }
       },
       onComplete: () => {
         activeIndexRef.current = clamped;
         targetIndexRef.current = clamped;
+        animStateRef.current.progress = clamped;
         setActiveIndex(clamped);
         isAnimatingRef.current = false;
       }
@@ -806,7 +809,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
   // Move exactly ONE disc forward smoothly
   const handleNext = useCallback(() => {
     const total = filmsRef.current.length || 1;
-    const current = Math.round(targetIndexRef.current);
+    const current = activeIndexRef.current;
     const target = Math.min(total - 1, current + 1);
     if (target !== current) {
       glideToIndex(target);
@@ -815,7 +818,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
   // Move exactly ONE disc backward smoothly
   const handlePrev = useCallback(() => {
-    const current = Math.round(targetIndexRef.current);
+    const current = activeIndexRef.current;
     const target = Math.max(0, current - 1);
     if (target !== current) {
       glideToIndex(target);
@@ -1039,7 +1042,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       reqId = requestAnimationFrame(animate);
 
       // Pause 3D WebGL rendering when tab is hidden, modal/trailer is open, or gallery is offscreen
-      if (document.hidden || document.body.style.overflow === 'hidden' || !isGalleryVisible) {
+      if (document.hidden || document.body.style.overflow === 'hidden' || !isGalleryVisible || document.querySelector('.intro-loader:not(.fade-out)')) {
         return;
       }
 
@@ -1203,7 +1206,6 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
     // Strictly advances ONE disc per scroll gesture, absorbing high-force momentum or rapid trackpad flings.
     let isGestureLocked = false;
     let wheelDeltaAccumulator = 0;
-    let gestureLockTimer: any = null;
     let gestureIdleTimer: any = null;
     let lastScrollDirection = 0;
 
@@ -1244,27 +1246,28 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
       const direction = delta > 0 ? 1 : -1;
 
-      // If user reversed scroll direction, reset step lock immediately to allow instant direction change
-      if (isGestureLocked && direction !== lastScrollDirection && Math.abs(delta) > 6) {
-        clearTimeout(gestureLockTimer);
+      // Gesture idle timer: 120ms without wheel ticks means user lifted finger / ended the scroll stroke
+      clearTimeout(gestureIdleTimer);
+      gestureIdleTimer = setTimeout(() => {
+        isGestureLocked = false;
+        wheelDeltaAccumulator = 0;
+      }, 120);
+
+      // If user clearly reversed scroll direction, allow immediate direction reversal
+      if (isGestureLocked && direction !== lastScrollDirection && Math.abs(delta) > 8) {
         isGestureLocked = false;
         wheelDeltaAccumulator = 0;
       }
 
-      // If locked from advancing a disc, drop trailing momentum events WITHOUT pushing back the unlock timer!
-      if (isGestureLocked) {
+      // If locked from advancing a disc OR currently gliding to the next CD, drop trailing momentum!
+      if (isGestureLocked || isAnimatingRef.current) {
         return;
       }
-
-      clearTimeout(gestureIdleTimer);
-      gestureIdleTimer = setTimeout(() => {
-        wheelDeltaAccumulator = 0;
-      }, 100);
 
       wheelDeltaAccumulator += delta;
 
       const isDiscreteClick = Math.abs(delta) >= 28 || e.deltaMode === 1;
-      const threshold = isDiscreteClick ? 12 : 20;
+      const threshold = isDiscreteClick ? 14 : 22;
 
       if (Math.abs(wheelDeltaAccumulator) >= threshold) {
         isGestureLocked = true;
@@ -1276,13 +1279,6 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         } else {
           handlePrevRef.current();
         }
-
-        // Fixed cooldown: unlocks in 220ms (140ms for discrete clicks), never trapped by momentum
-        clearTimeout(gestureLockTimer);
-        gestureLockTimer = setTimeout(() => {
-          isGestureLocked = false;
-          wheelDeltaAccumulator = 0;
-        }, isDiscreteClick ? 140 : 220);
       }
     };
 

@@ -28,6 +28,9 @@
   width: 100%;
   height: 100%;
   z-index: 1;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: contents;
 }
 
 /* Vignette overlay to spotlight title */
@@ -60,7 +63,8 @@
   font-size: clamp(1.8rem, 7vw, 5.5rem);
   font-family: 'Bebas Neue', sans-serif;
   letter-spacing: 0.16em;
-  text-indent: 0.16em; /* Perfectly balances trailing letter-spacing to center the word exactly */
+  text-indent: 0.16em;
+  /* Perfectly balances trailing letter-spacing to center the word exactly */
   line-height: 1;
   text-align: center;
   margin: 0 auto;
