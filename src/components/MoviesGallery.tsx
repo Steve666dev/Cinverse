@@ -12,7 +12,7 @@ import {
   computeReleaseStatus,
   isInDisplayWindow
 } from '../utils/releaseStatus';
-import { TMDB_KEY, pickCleanTrailerKey } from '../data/api';
+import { TMDB_KEY, pickCleanTrailerKey, fetchLiveImdbRatingForMovie } from '../data/api';
 import { A24TrailerLightbox } from './A24TrailerLightbox';
 import { ChevronLeft, ChevronRight, Play, Info, List, ExternalLink } from 'lucide-react';
 
@@ -526,8 +526,10 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
 
       // 2. Secondary fallback: direct static CDN cache from /data/cache/
       try {
-        const cacheRes = (await fetch(`/data/cache/${deviceToday.iso}_IN_TMDB.json`).catch(() => null))
-          || (await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null));
+        let cacheRes = await fetch(`/data/cache/${deviceToday.iso}_IN_TMDB.json`).catch(() => null);
+        if (!cacheRes || !cacheRes.ok) {
+          cacheRes = await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null);
+        }
         if (cacheRes && cacheRes.ok) {
           const data = await cacheRes.json();
           if (!isCancelled && data?.ok && Array.isArray(data.movies) && data.movies.length > 0) {
@@ -680,44 +682,21 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
   useEffect(() => {
     if (!activeFilm || !activeFilm.imdbId) return;
     const targetId = activeFilm.imdbId;
-    fetch(`/api/imdb-rating?id=${encodeURIComponent(targetId)}`)
-      .then(res => res.ok ? res.json() : Promise.reject())
-      .then(data => {
-        if (data && data.ok && data.rating) {
-          setFilms(prev => prev.map(f => {
-            if (f.id === activeFilm.id || f.imdbId === targetId) {
-              return {
-                ...f,
-                imdbRating: data.rating,
-                imdbVotes: data.votes || f.imdbVotes,
-                rating: data.numericRating || f.rating
-              };
-            }
-            return f;
-          }));
-        }
-      })
-      .catch(() => {
-        fetch('/data/cache/imdb_ratings_live.json')
-          .then(r => r.ok ? r.json() : null)
-          .then(map => {
-            if (map && map[targetId]) {
-              const live = map[targetId];
-              setFilms(prev => prev.map(f => {
-                if (f.id === activeFilm.id || f.imdbId === targetId) {
-                  return {
-                    ...f,
-                    imdbRating: live.rating,
-                    imdbVotes: live.votes || f.imdbVotes,
-                    rating: live.numericRating || f.rating
-                  };
-                }
-                return f;
-              }));
-            }
-          })
-          .catch(() => {});
-      });
+    fetchLiveImdbRatingForMovie(targetId).then((live: any) => {
+      if (live && live.rating) {
+        setFilms(prev => prev.map(f => {
+          if (f.id === activeFilm.id || f.imdbId === targetId) {
+            return {
+              ...f,
+              imdbRating: live.rating,
+              imdbVotes: live.votes || f.imdbVotes,
+              rating: live.numericRating || f.rating
+            };
+          }
+          return f;
+        }));
+      }
+    }).catch(() => {});
   }, [activeFilm?.id, activeFilm?.imdbId]);
 
   // Pre-warm official trailer for active film in background for 0-delay instant playback

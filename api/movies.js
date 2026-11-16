@@ -23,9 +23,12 @@ export default async function handler(req, res) {
   // Look for the requested date, or fallback to the latest available daily cache
   const candidateFiles = [
     new URL(`../data/cache/${todayStr}_${region}_TMDB.json`, import.meta.url),
+    new URL('../data/cache/2026-11-16_IN_TMDB.json', import.meta.url),
     new URL('../data/cache/2026-11-15_IN_TMDB.json', import.meta.url),
     path.join(process.cwd(), 'data', 'cache', `${todayStr}_${region}_TMDB.json`),
     path.join(process.cwd(), 'public', 'data', 'cache', `${todayStr}_${region}_TMDB.json`),
+    path.join(process.cwd(), 'data', 'cache', '2026-11-16_IN_TMDB.json'),
+    path.join(process.cwd(), 'public', 'data', 'cache', '2026-11-16_IN_TMDB.json'),
     path.join(process.cwd(), 'data', 'cache', '2026-11-15_IN_TMDB.json'),
     path.join(process.cwd(), 'public', 'data', 'cache', '2026-11-15_IN_TMDB.json')
   ];

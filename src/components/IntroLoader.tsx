@@ -16,31 +16,24 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   useGSAP(() => {
-    // 1. Pristine, majestic cinematic title reveal animation (zero blur artifacts, crisp & lag-free)
+    // 1. Pristine, majestic cinematic title reveal animation (zero blur artifacts, crisp & whole-word reveal)
     if (titleRef.current) {
-      const chars = titleRef.current.querySelectorAll('.intro-char');
       gsap.fromTo(
-        chars,
+        titleRef.current,
         {
           opacity: 0,
-          y: 20,
-          scale: 0.92,
+          y: 18,
+          scale: 0.95,
         },
         {
           opacity: 1,
           y: 0,
           scale: 1,
-          duration: 0.9,
-          stagger: 0.04,
+          letterSpacing: '0.22em',
+          duration: 1.2,
           ease: 'power2.out',
         }
       );
-
-      gsap.to(titleRef.current, {
-        letterSpacing: '0.24em',
-        duration: 2.0,
-        ease: 'sine.out',
-      });
     }
 
     // 2. Canvas particle constellation background
@@ -94,11 +87,26 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
       return newPosters;
     }
 
-    async function init() {
-      // 1. Fetch cached theatrical posters and dynamic TMDB posters in parallel for instant zero-delay start
+    function init() {
+      // 1. Instantly instantiate particles and start animation timeline (zero blank screen delay)
+      for (let i = 0; i < particles.length; i++) {
+        particles[i] = {
+          x: 0,
+          y: 0,
+          scale: 0,
+          rotate: 0,
+          img: new Image()
+        };
+      }
+      startAnimation();
+
+      // 2. Fetch cached theatrical posters immediately (resolves in ~2ms from local static cache)
       const fetchCache = async (): Promise<string[]> => {
         try {
-          const cRes = await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null);
+          let cRes = await fetch('/data/cache/2026-11-16_IN_TMDB.json').catch(() => null);
+          if (!cRes || !cRes.ok) {
+            cRes = await fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null);
+          }
           if (cRes && cRes.ok) {
             const cData = await cRes.json().catch(() => null);
             if (Array.isArray(cData?.movies)) {
@@ -109,34 +117,15 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
         return [];
       };
 
-      const [cachedPosters, dynamicPosters] = await Promise.all([
-        fetchCache(),
-        fetchUniqueMovies(20, 1)
-      ]);
-
-      const posters = dynamicPosters.length > 0 ? dynamicPosters : cachedPosters;
-
-      if (!isActive) return;
-
-      for (let i = 0; i < particles.length; i++) {
-        particles[i] = {
-          x: 0,
-          y: 0,
-          scale: 0,
-          rotate: 0,
-          img: new Image()
-        }
-        // Wrap around the available posters
-        if (posters.length > 0) {
+      fetchCache().then(posters => {
+        if (!isActive || !posters.length) return;
+        for (let i = 0; i < particles.length; i++) {
           particles[i].img.src = posters[i % posters.length];
         }
-      }
+      });
 
-      if (!isActive) return;
-      startAnimation();
-
-      // 2. Fetch the rest in the background to add variety
-      fetchUniqueMovies(particles.length, 3).then(realPosters => {
+      // 3. Background fetch additional dynamic posters to add visual variety
+      fetchUniqueMovies(particles.length, 2).then(realPosters => {
         if (!isActive || realPosters.length === 0) return;
 
         for (let i = 0; i < particles.length; i++) {
@@ -153,7 +142,7 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
           clearInterval(intervalId);
           return;
         }
-        let newPosters = await fetchUniqueMovies(particles.length, 3);
+        let newPosters = await fetchUniqueMovies(particles.length, 2);
 
         if (newPosters.length > 0 && isActive) {
           for (let i = 0; i < particles.length; i++) {

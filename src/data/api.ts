@@ -599,8 +599,135 @@ const fetchBatch = async (ids: string[]): Promise<Movie[]> => {
 };
 
 // ─── sessionStorage catalog cache (cleared on version bump) ──────────────────
-const CACHE_VERSION = 'v7_live_imdb';
+const CACHE_VERSION = 'v9_authentic_imdb';
 let hasCleanedStaleSessionCache = false;
+
+interface LiveImdbEntry {
+  rating: string;
+  votes?: string;
+  numericRating: number;
+  imdbId?: string;
+}
+
+const memoryImdbTitleMap = new Map<string, LiveImdbEntry>();
+const memoryImdbIdMap = new Map<string, LiveImdbEntry>();
+let isLiveCacheLoaded = false;
+
+export const loadStaticImdbCache = async (): Promise<void> => {
+  if (isLiveCacheLoaded) return;
+  try {
+    const [liveRes, dailyRes] = await Promise.all([
+      fetch('/data/cache/imdb_ratings_live.json').catch(() => null),
+      fetch('/data/cache/2026-11-16_IN_TMDB.json').catch(() => null)
+        .then(async r => (r && r.ok) ? r : fetch('/data/cache/2026-11-15_IN_TMDB.json').catch(() => null))
+    ]);
+
+    if (liveRes && liveRes.ok) {
+      const map = await liveRes.json().catch(() => null);
+      if (map && typeof map === 'object') {
+        for (const [id, val] of Object.entries(map as Record<string, any>)) {
+          if (val && val.rating) {
+            const entry: LiveImdbEntry = {
+              rating: String(val.rating),
+              votes: val.votes,
+              numericRating: typeof val.numericRating === 'number' ? val.numericRating : parseFloat(val.rating) || 0,
+              imdbId: id
+            };
+            memoryImdbIdMap.set(id, entry);
+          }
+        }
+      }
+    }
+
+    if (dailyRes && dailyRes.ok) {
+      const data = await dailyRes.json().catch(() => null);
+      if (Array.isArray(data?.movies)) {
+        for (const m of data.movies) {
+          if (m.title && m.imdbRating) {
+            const cleanTitle = m.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const entry: LiveImdbEntry = {
+              rating: String(m.imdbRating),
+              votes: m.imdbVotes,
+              numericRating: typeof m.rating === 'number' ? m.rating : parseFloat(m.imdbRating) || 0,
+              imdbId: m.imdbId
+            };
+            memoryImdbTitleMap.set(cleanTitle, entry);
+            if (m.imdbId) {
+              memoryImdbIdMap.set(m.imdbId, entry);
+            }
+          }
+        }
+      }
+    }
+    isLiveCacheLoaded = true;
+  } catch {}
+};
+
+export const enrichMoviesWithLiveImdb = async (movies: Movie[]): Promise<Movie[]> => {
+  if (!movies || movies.length === 0) return movies;
+  await loadStaticImdbCache();
+
+  const toFetchOmdb: Movie[] = [];
+
+  for (const m of movies) {
+    if (!m) continue;
+    // 1. Direct id match
+    if (m.imdbId && memoryImdbIdMap.has(m.imdbId)) {
+      const entry = memoryImdbIdMap.get(m.imdbId)!;
+      m.imdbRating = entry.rating;
+      if (entry.votes) m.imdbVotes = entry.votes;
+      m.r = entry.numericRating;
+      continue;
+    }
+
+    // 2. Title match
+    const cleanTitle = (m.t || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (cleanTitle && memoryImdbTitleMap.has(cleanTitle)) {
+      const entry = memoryImdbTitleMap.get(cleanTitle)!;
+      m.imdbRating = entry.rating;
+      if (entry.votes) m.imdbVotes = entry.votes;
+      m.r = entry.numericRating;
+      if (!m.imdbId && entry.imdbId) m.imdbId = entry.imdbId;
+      continue;
+    }
+
+    // If still missing authentic rating, schedule for fast OMDb lookup
+    if (!m.imdbRating || m.imdbRating === 'N/A') {
+      toFetchOmdb.push(m);
+    }
+  }
+
+  // 3. Fast OMDb lookup for unindexed titles (parallel with fast fallback)
+  if (toFetchOmdb.length > 0 && OMDB_KEY) {
+    const lookups = toFetchOmdb.slice(0, 16).map(async (m) => {
+      try {
+        const queryTitle = m.t.replace(/[:\-–—].*$/, '').trim() || m.t;
+        const res = await fetch(`${OMDB_URL}?apikey=${OMDB_KEY}&t=${encodeURIComponent(queryTitle)}&y=${m.y || ''}`).catch(() => null);
+        if (res && res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && data.Response !== 'False' && data.imdbRating && data.imdbRating !== 'N/A') {
+            const ratingStr = String(data.imdbRating);
+            const num = parseFloat(ratingStr) || 0;
+            const votes = data.imdbVotes && data.imdbVotes !== 'N/A' ? formatImdbVoteCount(data.imdbVotes) : undefined;
+            m.imdbRating = ratingStr;
+            m.imdbVotes = votes;
+            m.r = num;
+            if (data.imdbID) m.imdbId = data.imdbID;
+
+            const cleanT = (m.t || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const entry: LiveImdbEntry = { rating: ratingStr, votes, numericRating: num, imdbId: data.imdbID };
+            if (cleanT) memoryImdbTitleMap.set(cleanT, entry);
+            if (data.imdbID) memoryImdbIdMap.set(data.imdbID, entry);
+          }
+        }
+      } catch {}
+    });
+
+    await Promise.allSettled(lookups);
+  }
+
+  return movies;
+};
 
 const loadCached = (key: string): Movie[] | null => {
   try {
@@ -699,9 +826,10 @@ export const fetchIndiaTrendingMovies = async (): Promise<Movie[]> => {
             (m: any) => m && m.poster_path && m.title && m.t !== 'Brindavihari' && m.t !== 'Bhairathi Ranagal'
           );
           const movies = valid.slice(0, 14).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
-          if (movies.length > 0) {
-            saveCache(cacheKey, movies);
-            return movies;
+          const enriched = await enrichMoviesWithLiveImdb(movies);
+          if (enriched.length > 0) {
+            saveCache(cacheKey, enriched);
+            return enriched;
           }
         }
       }
@@ -729,9 +857,10 @@ export const fetchTrendingMovies = async (): Promise<Movie[]> => {
         if (Array.isArray(data.results) && data.results.length > 0) {
           const valid = data.results.filter((m: any) => m && m.poster_path && m.title);
           const movies = valid.slice(0, 14).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
-          if (movies.length > 0) {
-            saveCache(cacheKey, movies);
-            return movies;
+          const enriched = await enrichMoviesWithLiveImdb(movies);
+          if (enriched.length > 0) {
+            saveCache(cacheKey, enriched);
+            return enriched;
           }
         }
       }
@@ -759,9 +888,10 @@ export const fetchScifiMovies = async (): Promise<Movie[]> => {
         if (Array.isArray(data.results) && data.results.length > 0) {
           const valid = data.results.filter((m: any) => m && m.poster_path && m.title);
           const movies = valid.slice(0, 14).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
-          if (movies.length > 0) {
-            saveCache(cacheKey, movies);
-            return movies;
+          const enriched = await enrichMoviesWithLiveImdb(movies);
+          if (enriched.length > 0) {
+            saveCache(cacheKey, enriched);
+            return enriched;
           }
         }
       }
@@ -815,9 +945,10 @@ export const fetchRomanceDramaMovies = async (): Promise<Movie[]> => {
       }
 
       const movies = validItems.slice(0, 14).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
-      if (movies.length > 0) {
-        saveCache(cacheKey, movies);
-        return movies;
+      const enriched = await enrichMoviesWithLiveImdb(movies);
+      if (enriched.length > 0) {
+        saveCache(cacheKey, enriched);
+        return enriched;
       }
     } catch (e) {
       console.warn('TMDB Drama/Romance fetch error:', e);
@@ -930,7 +1061,8 @@ const tmdbSearch = async (query: string): Promise<Movie[]> => {
 
   if (rawCandidateMovies.length === 0) return [];
 
-  return rawCandidateMovies.map((m, i) => parseTMDBDiscoverMovie(m, i));
+  const rawParsed = rawCandidateMovies.map((m, i) => parseTMDBDiscoverMovie(m, i));
+  return await enrichMoviesWithLiveImdb(rawParsed);
 };
 
 // ─── OMDb keyword search fallback ────────────────────────────────────────────
@@ -1011,7 +1143,9 @@ export const fetchByGenreAndLanguage = async (
     // Filter strictly for verified poster artwork
     const valid = data.results.filter((m: any) => m && m.poster_path && m.title);
     const movies = valid.slice(0, 20).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
-    return movies;
+    const enriched = await enrichMoviesWithLiveImdb(movies);
+    sessionCache.set(cacheKey, enriched as any);
+    return enriched;
   } catch (e) {
     console.warn('Discover fetch failed:', e);
     return [];
@@ -1038,7 +1172,8 @@ export const fetchTopRatedMovies = async (page = 1): Promise<Movie[]> => {
 
     const valid = data.results.filter((m: any) => m && m.poster_path && m.title);
     const movies = valid.slice(0, 20).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
-    return movies;
+    const enriched = await enrichMoviesWithLiveImdb(movies);
+    return enriched;
   } catch (e) {
     console.warn('TopRated fetch failed:', e);
     return [];
@@ -1119,7 +1254,8 @@ export const fetchForYouMovies = async (genreIds: number[] = [], actorIds: numbe
     uniqueResults.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
 
     // Instant zero-waterfall conversion with parseTMDBDiscoverMovie
-    const finalResults = uniqueResults.slice(0, 16).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
+    const rawResults = uniqueResults.slice(0, 16).map((m: any, i: number) => parseTMDBDiscoverMovie(m, i));
+    const finalResults = await enrichMoviesWithLiveImdb(rawResults);
 
     // Shuffle slightly if multi-genre to keep recommendations fresh
     if (genreIds.length > 1 || actorIds.length > 0) {
