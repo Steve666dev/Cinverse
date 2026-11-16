@@ -18,22 +18,29 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
   useGSAP(() => {
     // 1. Pristine, majestic cinematic title reveal animation (zero blur artifacts, crisp & whole-word reveal)
     if (titleRef.current) {
+      const chars = titleRef.current.querySelectorAll('.intro-char');
       gsap.fromTo(
-        titleRef.current,
+        chars,
         {
           opacity: 0,
-          y: 18,
-          scale: 0.95,
+          y: 20,
+          scale: 0.92,
         },
         {
           opacity: 1,
           y: 0,
           scale: 1,
-          letterSpacing: '0.22em',
-          duration: 1.2,
+          duration: 0.9,
+          stagger: 0.04,
           ease: 'power2.out',
         }
       );
+
+      gsap.to(titleRef.current, {
+        letterSpacing: '0.24em',
+        duration: 2.0,
+        ease: 'sine.out',
+      });
     }
 
     // 2. Canvas particle constellation background
@@ -45,8 +52,7 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
     let cw = (c.width = window.innerWidth);
     let ch = (c.height = window.innerHeight);
     let radius = Math.max(cw, ch);
-    const particleCount = typeof window !== 'undefined' && window.innerWidth < 768 ? 48 : 78;
-    const particles = Array(particleCount).fill(null);
+    const particles = Array(99).fill(null);
     let tl: gsap.core.Timeline | null = null;
     let isActive = true;
 
@@ -189,7 +195,7 @@ const IntroLoader: React.FC<IntroLoaderProps> = ({ isFadingOut = false }) => {
       ctx.imageSmoothingEnabled = true;
 
       // Base poster dimensions for uniform, elegant cinematic swirl (consistently sized & clearly visible)
-      const baseWidth = Math.max(115, Math.min(165, Math.min(cw, ch) * 0.14));
+      const baseWidth = Math.max(165, Math.min(235, Math.min(cw, ch) * 0.20));
 
       particles.forEach((p) => {
         ctx.translate(cw / 2, ch / 2);

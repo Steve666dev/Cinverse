@@ -1241,7 +1241,12 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       e.stopImmediatePropagation();
       resetIdle();
 
-      const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      let delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      if (e.deltaMode === 1) {
+        delta *= 28; // Normalize Firefox DOM_DELTA_LINE
+      } else if (e.deltaMode === 2) {
+        delta *= 400; // Normalize DOM_DELTA_PAGE
+      }
       if (Math.abs(delta) < 1.0) return;
 
       const now = performance.now();
@@ -1334,6 +1339,7 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
       }
 
       if (pointerDirection === 'horizontal') {
+        if (e.cancelable) e.preventDefault();
         // Damped horizontal CD scrub locked strictly to one-disc range (±1.0) for calm 1-by-1 control
         const screenFactor = Math.max(340, Math.min(window.innerWidth, 560));
         const rawScrub = -dx / (screenFactor * 0.75);
@@ -1356,10 +1362,11 @@ export const MoviesGallery: React.FC<MoviesGalleryProps> = ({ onOpenMovieModal, 
         const vx = dx / elapsed;
 
         // Strictly advance ONE disc at a time (forward or backward) smoothly
-        let targetIndex = activeIndexRef.current;
-        if (Math.abs(vx) > 0.16 || Math.abs(dx) > 24) {
+        const baseIndex = Math.round(startProgressRef.current);
+        let targetIndex = baseIndex;
+        if (Math.abs(vx) > 0.14 || Math.abs(dx) > 22) {
           const step = dx < 0 ? 1 : -1;
-          targetIndex = activeIndexRef.current + step;
+          targetIndex = baseIndex + step;
         }
 
         const total = filmsRef.current.length || 1;
